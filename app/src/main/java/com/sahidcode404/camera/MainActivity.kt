@@ -2,6 +2,7 @@ package com.sahidcode404.camera
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -39,15 +40,35 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun CameraPermissionGate() {
-        var granted by remember {
-            mutableStateOf(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+        val requiredPermissions = remember {
+            buildList {
+                add(Manifest.permission.CAMERA)
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }
         }
-        val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-        LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
-        if (granted) CameraScreen()
-        else Surface(color = Color.Black, modifier = Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Button(onClick = { launcher.launch(Manifest.permission.CAMERA) }) { Text("Allow camera") }
+        fun allGranted(): Boolean = requiredPermissions.all { permission ->
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        }
+
+        var granted by remember { mutableStateOf(allGranted()) }
+        val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            granted = allGranted()
+        }
+        LaunchedEffect(Unit) {
+            if (!granted) launcher.launch(requiredPermissions.toTypedArray())
+        }
+
+        if (granted) {
+            CameraScreen()
+        } else {
+            Surface(color = Color.Black, modifier = Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Button(onClick = { launcher.launch(requiredPermissions.toTypedArray()) }) {
+                        Text("Allow camera")
+                    }
+                }
             }
         }
     }
