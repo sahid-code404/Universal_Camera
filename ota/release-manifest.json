@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "versionCode": 4,
+  "versionName": "0.1.3",
+  "minSdk": 28,
+  "apkAssetName": "Camera-0.1.3.apk",
+  "sha256": "da43fcb2290cb63a1a824271836141424177c28cbc2d5c3a2b50cbb70efdd715",
+  "signingCertSha256": "18c2d2494412966a9038ae9c537228a8e3bfbd540e4467bdbdf3420b4efde1d7",
+  "changelog": "Lens rail now shows only the real rear camera and validated usable auxiliary cameras. Logical Camera2 Auto routes are hidden from the user interface.",
+  "mandatory": false
+}
