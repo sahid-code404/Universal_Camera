@@ -6,9 +6,9 @@ Repository foundation generated for the empty `sahid-code404/Universal_Camera` r
 
 ## Current phase
 
-**Phase 1 — universal camera discovery and active probing (implementation complete; device gate pending)**
+**Phase 3 — single full-resolution sensor RAW capture and DNG output (implementation in progress; device gate pending)**
 
-Implemented in the Phase-1 branch:
+Merged foundations:
 - project/module/build setup
 - native Pixel-like UI shell
 - Camera2 static discovery + logical/physical lens metadata
@@ -17,26 +17,39 @@ Implemented in the Phase-1 branch:
 - conservative duplicate/depth/unusable-camera filtering
 - build-fingerprint + lens-fingerprint probe cache
 - runtime device/lens quirk registry with repeated-RAW-failure suppression
-- validated capability state surfaced to the app model
-- Camera2 preview controller
+- Camera2 TextureView preview with orientation-aware transform
+- real AF/AE tap metering coordinate mapping
+- pinch-to-zoom with HAL-advertised zoom limits
 - DataStore preferences
 - OTA updater
 - native processing bridge scaffold
 
-Phase-1 gate still requires real-device evidence:
+Phase-3 implementation now adds:
+- maximum-size RAW_SENSOR still capture on the selected validated lens
+- exclusive single-RAW session to avoid assuming unsupported preview+RAW combinations
+- exact RAW Image timestamp / SENSOR_TIMESTAMP pairing
+- physical-camera CaptureResult selection for routed physical lenses
+- direct Android DngCreator output without JPEG/HEIF conversion
+- atomic/pending MediaStore DNG publication under Pictures/Camera
+- shutter/timer integration and automatic preview restoration
+- Android 9 legacy storage permission handling while keeping scoped MediaStore behavior on newer Android versions
+
+Hardware gates still require real-device evidence:
 - verify every displayed lens maps to a real usable optic
 - verify hidden/inaccessible auxiliary lenses are not falsely exposed
-- verify repeated open/close does not wedge the vendor HAL
-- verify RAW probe on each RAW-capable lens
+- verify preview crop/orientation/focus mapping on front and rear lenses
+- verify repeated open/close and RAW session reconfiguration do not wedge the vendor HAL
+- verify each saved DNG opens in standards-based RAW editors
+- verify saved DNG dimensions match the selected lens's maximum advertised RAW size
 - record device quirks in `docs/DEVICE_TEST_MATRIX.md`
 
 Not yet production-complete:
-- fully correct tap-to-focus sensor mapping
 - seamless multi-lens zoom switching
-- single RAW capture/DNG writer integration
-- RAW ring buffer/ZSL
+- combined preview + sustained RAW ring buffer / ZSL
+- frame quality scoring in production
 - multi-frame alignment/fusion/HDR/SR
+- computational DNG finalization
 - portrait/night/panorama processing engines
-- RAW video engine
+- RAW/video capture engines
 
 Do not mark a hardware capability complete without device evidence.

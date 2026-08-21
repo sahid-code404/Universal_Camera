@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +64,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sahidcode404.camera.BuildConfig
 import com.sahidcode404.camera.CameraViewModel
+import com.sahidcode404.camera.camera.camera2.Camera2PreviewController
+import com.sahidcode404.camera.camera.camera2.RawDngCaptureInfo
 import com.sahidcode404.camera.core.model.CaptureMode
 import com.sahidcode404.camera.core.model.LensDescriptor
 import com.sahidcode404.camera.core.model.HdrMode
@@ -71,14 +74,14 @@ import com.sahidcode404.camera.core.model.UpscaleMode
 import com.sahidcode404.camera.core.model.ModeFamily
 import com.sahidcode404.camera.core.settings.CameraPreferences
 import com.sahidcode404.camera.core.settings.CameraSettingsRepository
+import com.sahidcode404.camera.storage.DngMediaStore
 import com.sahidcode404.camera.updater.ApkInstaller
 import com.sahidcode404.camera.updater.AvailableUpdate
 import com.sahidcode404.camera.updater.GitHubUpdateClient
 import com.sahidcode404.camera.updater.UpdateCheckResult
 import com.sahidcode404.camera.updater.UpdateAutoChecker
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 private val Deck = Color.Black
 private val SurfaceLow = Color(0xFF242529)
@@ -91,9 +94,16 @@ private val SelectedText = Color(0xFF17345E)
 fun CameraScreen(vm: CameraViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val captureScope = rememberCoroutineScope()
+    val previewController = remember { Camera2PreviewController(context.applicationContext) }
+    val dngStore = remember { DngMediaStore(context.applicationContext) }
+    val captureSettings = remember { CameraSettingsRepository(context.applicationContext) }
+    val capturePrefs by captureSettings.preferences.collectAsStateWithLifecycle(initialValue = CameraPreferences())
     var showSettings by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(false) }
     var focusPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+    var captureBusy by remember { mutableStateOf(false) }
+    var captureStatus by remember { mutableStateOf<String?>(null) }
     val selected = vm.selectedLens()
     val updaterClient = remember { GitHubUpdateClient(context.applicationContext, BuildConfig.UPDATE_OWNER, BuildConfig.UPDATE_REPO) }
     var backgroundUpdate by remember { mutableStateOf<AvailableUpdate?>(null) }
@@ -112,6 +122,51 @@ fun CameraScreen(vm: CameraViewModel = viewModel()) {
         }
     }
 
+    LaunchedEffect(captureStatus, captureBusy) {
+        val text = captureStatus ?: return@LaunchedEffect
+        if (!captureBusy && (text.startsWith("Saved") || text.startsWith("RAW capture") || text.startsWith("Video"))) {
+            delay(2_200)
+            captureStatus = null
+        }
+    }
+
+    val onShutter: () -> Unit = {
+        if (!captureBusy) {
+            val lens = selected
+            when {
+                state.mode.family == ModeFamily.VIDEO -> captureStatus = "Video capture is phase-gated"
+                lens == null -> captureStatus = "RAW capture unavailable: no usable lens"
+                !lens.supportsRaw || lens.validation.rawStillUsable != true ->
+                    captureStatus = "RAW capture unavailable on this lens"
+                else -> captureScope.launch {
+                    captureBusy = true
+                    try {
+                        val timerSeconds = capturePrefs.timerSeconds.coerceAtLeast(0)
+                        if (timerSeconds > 0) {
+                            captureStatus = "Capturing in ${timerSeconds}s"
+                            delay(timerSeconds * 1_000L)
+                        }
+                        captureStatus = "Capturing sensor RAW…"
+                        var info: RawDngCaptureInfo? = null
+                        dngStore.writeDng("Camera_${System.currentTimeMillis()}.dng") { output ->
+                            info = previewController.captureSingleRawDng(output)
+                        }
+                        val captured = info
+                        captureStatus = if (captured != null) {
+                            "Saved ${captured.width}×${captured.height} DNG"
+                        } else {
+                            "Saved DNG"
+                        }
+                    } catch (t: Throwable) {
+                        captureStatus = "RAW capture failed: ${t.message ?: t.javaClass.simpleName}"
+                    } finally {
+                        captureBusy = false
+                    }
+                }
+            }
+        }
+    }
+
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Column(
             Modifier
@@ -127,12 +182,15 @@ fun CameraScreen(vm: CameraViewModel = viewModel()) {
                     .background(Color(0xFF151619))
                     .pointerInput(Unit) {
                         detectTapGestures { p ->
-                            // Visual feedback only until Phase-2 sensor-coordinate mapping is validated.
                             focusPoint = p.x / size.width to p.y / size.height
                         }
                     }
             ) {
-                CameraPreview(selected?.target, Modifier.fillMaxSize())
+                CameraPreview(
+                    target = selected?.target,
+                    controller = previewController,
+                    modifier = Modifier.fillMaxSize(),
+                )
                 TopControls(
                     hdr = state.hdrMode.label,
                     updateAvailable = backgroundUpdate != null,
@@ -150,6 +208,8 @@ fun CameraScreen(vm: CameraViewModel = viewModel()) {
 
             BottomDeck(
                 mode = state.mode,
+                captureBusy = captureBusy,
+                onShutter = onShutter,
                 onMode = vm::setMode,
                 onSwitch = vm::switchFacing,
                 onSettings = { showSettings = true },
@@ -160,6 +220,16 @@ fun CameraScreen(vm: CameraViewModel = viewModel()) {
 
         if (state.discoveryRunning) {
             Text("Discovering cameras…", color = Color.White, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
+        }
+        captureStatus?.let { status ->
+            Surface(
+                color = Color(0xDD18191C),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 74.dp),
+            ) {
+                Text(status, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp))
+            }
         }
     }
 
@@ -257,6 +327,8 @@ private fun LensRail(
 @Composable
 private fun BottomDeck(
     mode: CaptureMode,
+    captureBusy: Boolean,
+    onShutter: () -> Unit,
     onMode: (CaptureMode) -> Unit,
     onSwitch: () -> Unit,
     onSettings: () -> Unit,
@@ -280,7 +352,7 @@ private fun BottomDeck(
             Surface(color = SurfaceHi, shape = RoundedCornerShape(16.dp), modifier = Modifier.size(52.dp)) {
                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Image, null, tint = Color.White) }
             }
-            Shutter(video = mode.family == ModeFamily.VIDEO)
+            Shutter(video = mode.family == ModeFamily.VIDEO, busy = captureBusy, onClick = onShutter)
             Surface(color = SurfaceHi, shape = RoundedCornerShape(16.dp), modifier = Modifier.size(52.dp).clickable(onClick = onSwitch)) {
                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Cameraswitch, null, tint = Color.White) }
             }
@@ -335,12 +407,18 @@ private fun ModePill(mode: CaptureMode, active: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Shutter(video: Boolean) {
+private fun Shutter(video: Boolean, busy: Boolean, onClick: () -> Unit) {
     val outer = if (video) Color(0xFF3C4043) else Color(0xFF55585E)
     val inner = if (video) Color(0xFFEF5361) else Color.White
     Box(
-        Modifier.size(80.dp).background(Color.Black, CircleShape).border(5.dp, outer, CircleShape).padding(7.dp)
-            .clip(if (video) RoundedCornerShape(18.dp) else CircleShape).background(inner).clickable { /* capture phase-gated */ }
+        Modifier
+            .size(80.dp)
+            .background(Color.Black, CircleShape)
+            .border(5.dp, outer, CircleShape)
+            .padding(7.dp)
+            .clip(if (video) RoundedCornerShape(18.dp) else CircleShape)
+            .background(inner)
+            .clickable(enabled = !busy, onClick = onClick)
     )
 }
 
