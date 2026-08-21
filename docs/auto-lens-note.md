@@ -1,0 +1,1 @@
+Logical Camera2 auto-switch parents are internal transport routes. The user lens rail must show validated concrete rear/front/AUX cameras; if a device exposes only a logical rear route it is presented as the normal 1x camera rather than as an additional Auto lens.
