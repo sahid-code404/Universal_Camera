@@ -74,20 +74,67 @@ class CameraSettingsRepository(private val context: Context) {
         )
     }
 
-    suspend fun setHdrMode(value: HdrMode) = context.cameraDataStore.edit { it[Keys.hdr] = value.name }
-    suspend fun setPreviewPipeline(value: PreviewPipeline) = context.cameraDataStore.edit { it[Keys.preview] = value.name }
-    suspend fun setUpscaleMode(value: UpscaleMode) = context.cameraDataStore.edit { it[Keys.upscale] = value.name }
-    suspend fun setSelectedLens(key: String) = context.cameraDataStore.edit { it[Keys.lens] = key }
-    suspend fun setTimerSeconds(value: Int) = context.cameraDataStore.edit { it[Keys.timer] = value }
-    suspend fun setAspectRatio(value: String) = context.cameraDataStore.edit { it[Keys.ratio] = value }
-    suspend fun setGrid(value: String) = context.cameraDataStore.edit { it[Keys.grid] = value }
-    suspend fun setCameraSounds(value: Boolean) = context.cameraDataStore.edit { it[Keys.sounds] = value }
-    suspend fun setSaveLocation(value: Boolean) = context.cameraDataStore.edit { it[Keys.location] = value }
-    suspend fun setMirrorSelfie(value: Boolean) = context.cameraDataStore.edit { it[Keys.mirror] = value }
-    suspend fun setFramingHints(value: Boolean) = context.cameraDataStore.edit { it[Keys.framing] = value }
-    suspend fun setDirtyLensWarning(value: Boolean) = context.cameraDataStore.edit { it[Keys.dirtyLens] = value }
-    suspend fun setManualLensSelection(value: Boolean) = context.cameraDataStore.edit { it[Keys.manualLens] = value }
-    suspend fun setRememberSettings(value: Boolean) = context.cameraDataStore.edit { it[Keys.remember] = value }
-    suspend fun setLaunchMode(value: String) = context.cameraDataStore.edit { it[Keys.launch] = value }
-    suspend fun setVolumeKeyAction(value: String) = context.cameraDataStore.edit { it[Keys.volume] = value }
+    suspend fun setHdrMode(value: HdrMode): Unit {
+        context.cameraDataStore.edit { it[Keys.hdr] = value.name }
+    }
+
+    suspend fun setPreviewPipeline(value: PreviewPipeline): Unit {
+        context.cameraDataStore.edit { it[Keys.preview] = value.name }
+    }
+
+    suspend fun setUpscaleMode(value: UpscaleMode): Unit {
+        context.cameraDataStore.edit { it[Keys.upscale] = value.name }
+    }
+
+    suspend fun setSelectedLens(key: String): Unit {
+        context.cameraDataStore.edit { it[Keys.lens] = key }
+    }
+
+    suspend fun setTimerSeconds(value: Int): Unit {
+        context.cameraDataStore.edit { it[Keys.timer] = value }
+    }
+
+    suspend fun setAspectRatio(value: String): Unit {
+        context.cameraDataStore.edit { it[Keys.ratio] = value }
+    }
+
+    suspend fun setGrid(value: String): Unit {
+        context.cameraDataStore.edit { it[Keys.grid] = value }
+    }
+
+    suspend fun setCameraSounds(value: Boolean): Unit {
+        context.cameraDataStore.edit { it[Keys.sounds] = value }
+    }
+
+    suspend fun setSaveLocation(value: Boolean): Unit {
+        context.cameraDataStore.edit { it[Keys.location] = value }
+    }
+
+    suspend fun setMirrorSelfie(value: Boolean): Unit {
+        context.cameraDataStore.edit { it[Keys.mirror] = value }
+    }
+
+    suspend fun setFramingHints(value: Boolean): Unit {
+        context.cameraDataStore.edit { it[Keys.framing] = value }
+    }
+
+    suspend fun setDirtyLensWarning(value: Boolean): Unit {
+        context.cameraDataStore.edit { it[Keys.dirtyLens] = value }
+    }
+
+    suspend fun setManualLensSelection(value: Boolean): Unit {
+        context.cameraDataStore.edit { it[Keys.manualLens] = value }
+    }
+
+    suspend fun setRememberSettings(value: Boolean): Unit {
+        context.cameraDataStore.edit { it[Keys.remember] = value }
+    }
+
+    suspend fun setLaunchMode(value: String): Unit {
+        context.cameraDataStore.edit { it[Keys.launch] = value }
+    }
+
+    suspend fun setVolumeKeyAction(value: String): Unit {
+        context.cameraDataStore.edit { it[Keys.volume] = value }
+    }
 }
