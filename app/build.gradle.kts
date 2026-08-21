@@ -10,12 +10,12 @@ val cameraVersionName = providers.gradleProperty("cameraVersionName").orElse("0.
 
 android {
     namespace = "com.sahidcode404.camera"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sahidcode404.camera"
         minSdk = 28
-        targetSdk = 37
+        targetSdk = 36
         versionCode = cameraVersionCode
         versionName = cameraVersionName
 
