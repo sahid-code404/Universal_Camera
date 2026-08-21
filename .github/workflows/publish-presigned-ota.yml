@@ -99,10 +99,10 @@ jobs:
               --generate-notes
           fi
 
-      - name: Confirm OTA release is discoverable
+      - name: Confirm OTA release assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,assets,isLatest
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,assets
