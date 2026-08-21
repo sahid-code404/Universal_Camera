@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "versionCode": 2,
+  "versionName": "0.1.1",
+  "minSdk": 28,
+  "apkAssetName": "Camera-0.1.1.apk",
+  "sha256": "ff3c0f1cd541d298666c4a51c608e7c39505359d30fe3cc5bb5f1451d20de438",
+  "signingCertSha256": "18c2d2494412966a9038ae9c537228a8e3bfbd540e4467bdbdf3420b4efde1d7",
+  "changelog": "Fix camera preview orientation across portrait, landscape, reverse portrait and reverse landscape; improve front-camera mirroring and tap-to-focus mapping.",
+  "mandatory": false
+}
