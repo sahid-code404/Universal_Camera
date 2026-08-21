@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -14,7 +16,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sahidcode404.camera.camera.camera2.Camera2PreviewController
+import com.sahidcode404.camera.core.model.CameraRuntimeSignal
+import com.sahidcode404.camera.core.model.CameraSessionState
 import com.sahidcode404.camera.core.model.LensFacing
 import com.sahidcode404.camera.core.model.LensTarget
 
@@ -26,6 +31,13 @@ fun CameraPreview(
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val undoFrontMirror = target?.facing == LensFacing.FRONT
+    val previewState by controller.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(previewState) {
+        if (previewState == CameraSessionState.PREVIEW) {
+            CameraRuntimeSignal.markPreviewStreaming()
+        }
+    }
 
     DisposableEffect(lifecycleOwner, controller) {
         val observer = LifecycleEventObserver { _, event ->
@@ -46,17 +58,13 @@ fun CameraPreview(
         AndroidView(
             modifier = Modifier
                 .fillMaxSize()
-                // Camera2PreviewController mirrors front cameras in display space. A second display-only
-                // horizontal flip makes the viewfinder match the real scene while leaving the Camera2
-                // stream topology, crop, zoom and orientation math unchanged for every lens.
+                // The controller's Camera2 transform mirrors front display space. Undo only that
+                // display mirror so the preview matches the real scene without touching sensor data.
                 .graphicsLayer { scaleX = if (undoFrontMirror) -1f else 1f },
             factory = { ctx -> TextureView(ctx).also(controller::attach) },
             update = { controller.setTarget(target) },
         )
 
-        // Compose owns interaction coordinates while TextureView remains a zero-copy camera surface.
-        // Undo the extra front-camera display flip before handing the point to the controller, which
-        // already performs its own front-camera sensor-space mapping.
         Box(
             Modifier
                 .fillMaxSize()
