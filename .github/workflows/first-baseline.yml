@@ -3,6 +3,8 @@ name: First Install Baseline
 on:
   push:
     branches: [ "release/first-install-baseline" ]
+  pull_request:
+    branches: [ main ]
 
 permissions:
   contents: read
