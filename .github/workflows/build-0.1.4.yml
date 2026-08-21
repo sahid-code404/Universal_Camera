@@ -38,3 +38,5 @@ jobs:
           name: Camera-0.1.4-unsigned
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+# Production signing uses the permanent Camera release certificate outside the public repository.
