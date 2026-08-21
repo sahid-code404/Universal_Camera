@@ -28,9 +28,20 @@ jobs:
         with:
           gradle-version: '9.5.1'
       - name: Build, unit test and lint
-        run: gradle :core:model:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+        run: |
+          gradle :core:model:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+          gradle :app:assembleRelease \
+            -PcameraVersionName="0.1.4" \
+            -PcameraVersionCode="5" \
+            --stacktrace
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: Camera-debug
           path: app/build/outputs/apk/debug/*.apk
+      - name: Upload Camera 0.1.4 unsigned release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Camera-0.1.4-unsigned
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
