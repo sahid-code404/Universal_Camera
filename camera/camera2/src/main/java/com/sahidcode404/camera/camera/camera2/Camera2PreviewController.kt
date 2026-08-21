@@ -21,6 +21,7 @@ import android.hardware.camera2.TotalCaptureResult
 import android.hardware.camera2.params.MeteringRectangle
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
+import android.hardware.display.DisplayManager
 import android.media.Image
 import android.media.ImageReader
 import android.os.Handler
@@ -57,8 +58,10 @@ data class RawDngCaptureInfo(
 
 class Camera2PreviewController(private val context: Context) : AutoCloseable {
     private val manager = context.getSystemService(CameraManager::class.java)
+    private val displayManager = context.getSystemService(DisplayManager::class.java)
     private val cameraThread = HandlerThread("CameraControl").apply { start() }
     private val handler = Handler(cameraThread.looper)
+    private val uiHandler = Handler(context.mainLooper)
     private val executor = Executor { command -> handler.post(command) }
     private val rawCaptureMutex = Mutex()
 
@@ -83,10 +86,32 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
     private var currentCropRegion: Rect? = null
     private var currentZoomRatio = 1f
     private var generation = 0L
+    private var displayListenerRegistered = false
+    private var lastDisplayRotation: Int? = null
+
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = Unit
+        override fun onDisplayRemoved(displayId: Int) = Unit
+
+        override fun onDisplayChanged(displayId: Int) {
+            val view = textureView ?: return
+            val display = view.display ?: return
+            if (display.displayId != displayId) return
+            val rotation = display.rotation
+            if (lastDisplayRotation == rotation) return
+            lastDisplayRotation = rotation
+            view.post { configureTransform(view.width, view.height) }
+        }
+    }
 
     fun attach(view: TextureView) {
         textureView = view
         view.surfaceTextureListener = listener
+        lastDisplayRotation = view.display?.rotation
+        if (!displayListenerRegistered) {
+            displayManager.registerDisplayListener(displayListener, uiHandler)
+            displayListenerRegistered = true
+        }
         if (view.isAvailable) reopen()
     }
 
@@ -543,25 +568,67 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
         )
     }
 
+    /**
+     * TextureView already compensates the camera sensor's mounting orientation. The remaining app-side
+     * work is to compensate the current display rotation and undo TextureView's implicit non-uniform
+     * scaling before applying a uniform center-crop scale. This follows Android's Camera2 preview
+     * guidance and works for portrait, landscape, reverse portrait, reverse landscape and front cameras.
+     */
     private fun configureTransform(viewWidth: Int, viewHeight: Int) {
         val view = textureView ?: return
         val size = previewSize ?: return
         val chars = requestCharacteristics ?: return
-        if (viewWidth <= 0 || viewHeight <= 0) return
+        if (viewWidth <= 0 || viewHeight <= 0 || size.width <= 0 || size.height <= 0) return
 
-        val rotation = relativeRotationDegrees(chars, view.display?.rotation ?: Surface.ROTATION_0)
-        val rotatedWidth = if (rotation == 90 || rotation == 270) size.height.toFloat() else size.width.toFloat()
-        val rotatedHeight = if (rotation == 90 || rotation == 270) size.width.toFloat() else size.height.toFloat()
-        val scale = max(viewWidth / rotatedWidth, viewHeight / rotatedHeight)
-        val front = chars.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
+        val displayRotation = view.display?.rotation ?: Surface.ROTATION_0
+        lastDisplayRotation = displayRotation
+        val displayDegrees = displayRotationDegrees(displayRotation)
+        val sensorOrientation = ((chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0) % 360 + 360) % 360
+        val rotationRequired = relativeRotationDegrees(chars, displayRotation) % 180 != 0
 
-        val matrix = Matrix().apply {
-            setTranslate(-size.width / 2f, -size.height / 2f)
-            postRotate(rotation.toFloat())
-            if (front) postScale(-1f, 1f)
-            postScale(scale, scale)
-            postTranslate(viewWidth / 2f, viewHeight / 2f)
+        val windowWidth = viewWidth.toFloat()
+        val windowHeight = viewHeight.toFloat()
+        val previewWidth = size.width.toFloat()
+        val previewHeight = size.height.toFloat()
+
+        val scaleX: Float
+        val scaleY: Float
+        if (sensorOrientation % 180 == 0) {
+            scaleX = if (!rotationRequired) windowWidth / previewHeight else windowWidth / previewWidth
+            scaleY = if (!rotationRequired) windowHeight / previewWidth else windowHeight / previewHeight
+        } else {
+            scaleX = if (rotationRequired) windowWidth / previewHeight else windowWidth / previewWidth
+            scaleY = if (rotationRequired) windowHeight / previewWidth else windowHeight / previewHeight
         }
+
+        if (scaleX <= 0f || scaleY <= 0f || !scaleX.isFinite() || !scaleY.isFinite()) return
+        val finalScale = max(scaleX, scaleY)
+        val centerX = windowWidth / 2f
+        val centerY = windowHeight / 2f
+
+        val matrix = Matrix()
+        if (rotationRequired) {
+            matrix.setScale(
+                finalScale / scaleX,
+                finalScale / scaleY,
+                centerX,
+                centerY,
+            )
+        } else {
+            matrix.setScale(
+                (windowHeight / windowWidth) / scaleY * finalScale,
+                (windowWidth / windowHeight) / scaleX * finalScale,
+                centerX,
+                centerY,
+            )
+        }
+
+        matrix.postRotate(-displayDegrees.toFloat(), centerX, centerY)
+
+        if (chars.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT) {
+            matrix.postScale(-1f, 1f, centerX, centerY)
+        }
+
         view.setTransform(matrix)
     }
 
@@ -570,11 +637,32 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
         normalizedY: Float,
         chars: CameraCharacteristics,
     ): Pair<Float, Float> {
-        var x = normalizedX
-        var y = normalizedY
+        var x = normalizedX.coerceIn(0f, 1f)
+        var y = normalizedY.coerceIn(0f, 1f)
         val front = chars.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
+
+        // The front preview is mirrored in display space; undo that before converting to sensor space.
         if (front) x = 1f - x
-        val rotation = relativeRotationDegrees(chars, textureView?.display?.rotation ?: Surface.ROTATION_0)
+
+        // Account for the uniform center crop used by configureTransform so taps near an edge still map
+        // to the sensor region that is actually visible rather than the hidden part of the stream.
+        val view = textureView
+        val size = previewSize
+        val rotation = relativeRotationDegrees(chars, view?.display?.rotation ?: Surface.ROTATION_0)
+        if (view != null && size != null && view.width > 0 && view.height > 0) {
+            val orientedWidth = if (rotation % 180 != 0) size.height.toFloat() else size.width.toFloat()
+            val orientedHeight = if (rotation % 180 != 0) size.width.toFloat() else size.height.toFloat()
+            val scale = max(view.width / orientedWidth, view.height / orientedHeight)
+            if (scale > 0f && scale.isFinite()) {
+                val visibleWidth = view.width / scale
+                val visibleHeight = view.height / scale
+                val left = (orientedWidth - visibleWidth) / 2f
+                val top = (orientedHeight - visibleHeight) / 2f
+                x = ((left + x * visibleWidth) / orientedWidth).coerceIn(0f, 1f)
+                y = ((top + y * visibleHeight) / orientedHeight).coerceIn(0f, 1f)
+            }
+        }
+
         return when (rotation) {
             90 -> y to (1f - x)
             180 -> (1f - x) to (1f - y)
@@ -583,20 +671,18 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
         }
     }
 
+    private fun displayRotationDegrees(displayRotation: Int): Int = when (displayRotation) {
+        Surface.ROTATION_90 -> 90
+        Surface.ROTATION_180 -> 180
+        Surface.ROTATION_270 -> 270
+        else -> 0
+    }
+
     private fun relativeRotationDegrees(chars: CameraCharacteristics, displayRotation: Int): Int {
         val sensorOrientation = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
-        val displayDegrees = when (displayRotation) {
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> 0
-        }
-        val front = chars.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
-        return if (front) {
-            (sensorOrientation + displayDegrees) % 360
-        } else {
-            (sensorOrientation - displayDegrees + 360) % 360
-        }
+        val displayDegrees = displayRotationDegrees(displayRotation)
+        val sign = if (chars.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT) 1 else -1
+        return (sensorOrientation - displayDegrees * sign + 360) % 360
     }
 
     private fun exifOrientationForCurrentDisplay(chars: CameraCharacteristics): Int =
@@ -633,9 +719,14 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
     }
 
     override fun close() {
+        if (displayListenerRegistered) {
+            runCatching { displayManager.unregisterDisplayListener(displayListener) }
+            displayListenerRegistered = false
+        }
         handler.post {
             generation++
             closeCameraInternal()
+            textureView = null
             cameraThread.quitSafely()
         }
     }
