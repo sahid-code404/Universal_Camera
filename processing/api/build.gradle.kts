@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.sahidcode404.camera.processing.api"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 28
