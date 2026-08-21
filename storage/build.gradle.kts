@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.sahidcode404.camera.storage"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 28
