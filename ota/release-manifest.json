@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "versionCode": 3,
+  "versionName": "0.1.2",
+  "minSdk": 28,
+  "apkAssetName": "Camera-0.1.2.apk",
+  "sha256": "3856f8833ed66614fae4d4f193d22be1bc507ef2f71703b6a261eb0463eaa7c9",
+  "signingCertSha256": "18c2d2494412966a9038ae9c537228a8e3bfbd540e4467bdbdf3420b4efde1d7",
+  "changelog": "Universal AUX discovery from the reference Camera project, unmirrored front viewfinder, and launch-time OTA update popup.",
+  "mandatory": false
+}
