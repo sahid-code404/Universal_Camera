@@ -94,7 +94,7 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
                 manager.getCameraCharacteristics(selected.physicalCameraId ?: selected.logicalCameraId)
             }.getOrElse { manager.getCameraCharacteristics(selected.logicalCameraId) }
             val map = charsForStream.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-            val sizes = map?.getOutputSizes(SurfaceTexture::class.java).orEmpty()
+            val sizes = map?.getOutputSizes(SurfaceTexture::class.java) ?: emptyArray()
             previewSize = choosePreviewSize(sizes, textureView?.width ?: 1080, textureView?.height ?: 1440)
             manager.openCamera(selected.logicalCameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(device: CameraDevice) {
@@ -143,7 +143,7 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
                         val requestChars = runCatching {
                             manager.getCameraCharacteristics(selected.physicalCameraId ?: selected.logicalCameraId)
                         }.getOrElse { manager.getCameraCharacteristics(selected.logicalCameraId) }
-                        val afModes = requestChars.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES).orEmpty()
+                        val afModes = requestChars.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES) ?: intArrayOf()
                         val afMode = when {
                             afModes.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) -> CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
                             afModes.contains(CaptureRequest.CONTROL_AF_MODE_AUTO) -> CaptureRequest.CONTROL_AF_MODE_AUTO
@@ -173,7 +173,7 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
         }
     }
 
-    private fun choosePreviewSize(sizes: Array<android.util.Size>, width: Int, height: Int): android.util.Size? {
+    private fun choosePreviewSize(sizes: Array<out android.util.Size>, width: Int, height: Int): android.util.Size? {
         if (sizes.isEmpty()) return null
         val targetRatio = if (height == 0) 4f / 3f else width.toFloat() / height.toFloat()
         return sizes

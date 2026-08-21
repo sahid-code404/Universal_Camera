@@ -8,8 +8,8 @@ Legend: `IMPLEMENTED`, `FOUNDATION`, `PLANNED`, `CAPABILITY-DEPENDENT`.
 | Camera permission flow | IMPLEMENTED | Contextual camera permission |
 | Camera2 static discovery | IMPLEMENTED | No ID assumptions |
 | Logical/physical lens metadata | IMPLEMENTED | Uses CameraCharacteristics / physical IDs |
-| Physical output routing | FOUNDATION | Preview route supported where HAL exposes it; full probe still required |
-| Runtime camera probing | PLANNED | Must test open/session/frame delivery and cache results |
+| Physical output routing | IMPLEMENTED / DEVICE-GATE | Preview and active probe use physical output routing where the logical HAL exposes it; device matrix must verify each lens |
+| Runtime camera probing | IMPLEMENTED / DEVICE-GATE | Active YUV open/session/frame probe + single RAW still probe + build-fingerprint cache; real-device evidence still required |
 | Processed preview | FOUNDATION | Camera2 TextureView preview present; Phase 2 transform matrix must be device-tested |
 | RAW preview | CAPABILITY-DEPENDENT / PLANNED | Vulkan/native path not implemented |
 | Tap-to-focus metering transform | PLANNED | Do not fake sensor coordinate mapping |
