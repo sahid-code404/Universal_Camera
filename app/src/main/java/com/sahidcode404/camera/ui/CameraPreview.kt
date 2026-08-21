@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -19,10 +17,12 @@ import com.sahidcode404.camera.camera.camera2.Camera2PreviewController
 import com.sahidcode404.camera.core.model.LensTarget
 
 @Composable
-fun CameraPreview(target: LensTarget?, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
+fun CameraPreview(
+    target: LensTarget?,
+    controller: Camera2PreviewController,
+    modifier: Modifier = Modifier,
+) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val controller = remember { Camera2PreviewController(context.applicationContext) }
 
     DisposableEffect(lifecycleOwner, controller) {
         val observer = LifecycleEventObserver { _, event ->
