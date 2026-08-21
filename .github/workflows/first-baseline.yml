@@ -24,7 +24,7 @@ jobs:
           packages: platform-tools
       - name: Install Android toolchain
         run: |
-          sdkmanager "platforms;android-36" "ndk;28.2.13676358" "cmake;3.22.1"
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.1'
@@ -39,4 +39,14 @@ jobs:
         with:
           name: Camera-0.1.0-unsigned
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+      - name: Export official APK signing tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-build-tools-36-signing
+          path: |
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0/apksigner
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0/lib/apksigner.jar
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0/zipalign
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0/aapt
           if-no-files-found: error
