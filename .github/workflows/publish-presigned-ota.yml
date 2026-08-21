@@ -18,15 +18,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: android-actions/setup-android@v3
+      - name: Check staged release is complete
+        id: gate
+        shell: bash
+        run: |
+          if [[ -f ota/.ready ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "OTA staging is incomplete; waiting for ota/.ready"
+          fi
+
+      - if: steps.gate.outputs.ready == 'true'
+        uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: 15859902
           packages: platform-tools
 
-      - name: Install APK verification tools
+      - if: steps.gate.outputs.ready == 'true'
+        name: Install APK verification tools
         run: sdkmanager "build-tools;36.0.0"
 
-      - name: Validate staged OTA package
+      - if: steps.gate.outputs.ready == 'true'
+        name: Validate staged OTA package
         id: validate
         shell: bash
         run: |
@@ -56,7 +70,12 @@ jobs:
           )"
 
           APK="ota/$APK_NAME"
-          test -f "$APK"
+          if [[ ! -f "$APK" ]]; then
+            shopt -s nullglob
+            parts=("$APK".b64.part*)
+            (( ${#parts[@]} > 0 )) || { echo "APK and staged base64 parts are missing" >&2; exit 1; }
+            cat "${parts[@]}" | base64 --decode > "$APK"
+          fi
 
           ACTUAL_SHA="$(sha256sum "$APK" | awk '{print $1}')"
           test "$ACTUAL_SHA" = "$EXPECTED_SHA"
@@ -78,7 +97,8 @@ jobs:
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Publish GitHub Release used by in-app OTA
+      - if: steps.gate.outputs.ready == 'true'
+        name: Publish GitHub Release used by in-app OTA
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.validate.outputs.tag }}
@@ -99,7 +119,8 @@ jobs:
               --generate-notes
           fi
 
-      - name: Confirm OTA release assets
+      - if: steps.gate.outputs.ready == 'true'
+        name: Confirm OTA release assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.validate.outputs.tag }}
