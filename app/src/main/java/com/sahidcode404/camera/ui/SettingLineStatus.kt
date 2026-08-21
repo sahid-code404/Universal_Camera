@@ -4,8 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,24 +18,28 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun SettingLine(title: String, subtitle: String, value: String, status: String) {
-    Row(
-        modifier = Modifier.padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(subtitle, color = Color(0xFFAEB3BA), fontSize = 11.sp)
+            Text(value, color = Color(0xFFBDC2C8), fontSize = 12.sp, modifier = Modifier.padding(start = 12.dp))
         }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 12.dp)) {
-            Text(value, color = Color(0xFFBDC2C8), fontSize = 12.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(subtitle, color = Color(0xFFAEB3BA), fontSize = 11.sp)
             Text(
                 status,
                 color = if (status == "RAW") Color(0xFF17345E) else Color(0xFFAEB3BA),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
-                    .padding(top = 3.dp)
+                    .padding(start = 12.dp)
                     .background(
                         if (status == "RAW") Color(0xFFD3DDFF) else Color.Transparent,
                         RoundedCornerShape(8.dp),
