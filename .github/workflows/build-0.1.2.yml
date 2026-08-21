@@ -3,12 +3,15 @@ name: Build Camera 0.1.2
 on:
   push:
     branches: [ "release/0.1.2-aux-ota-popup" ]
+  pull_request:
+    branches: [ main ]
 
 permissions:
   contents: read
 
 jobs:
   build-release-apk:
+    if: github.event_name == 'push' || github.head_ref == 'release/0.1.2-aux-ota-popup'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
