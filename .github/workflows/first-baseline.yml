@@ -1,0 +1,40 @@
+name: First Install Baseline
+
+on:
+  push:
+    branches: [ "release/first-install-baseline" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-production-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 15859902
+          packages: platform-tools
+      - name: Install Android toolchain
+        run: |
+          sdkmanager "platforms;android-36" "ndk;28.2.13676358" "cmake;3.22.1"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+      - name: Build unsigned production package
+        run: |
+          gradle :app:assembleRelease \
+            -PcameraVersionName="0.1.0" \
+            -PcameraVersionCode="1" \
+            --stacktrace
+      - name: Upload unsigned production APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Camera-0.1.0-unsigned
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
