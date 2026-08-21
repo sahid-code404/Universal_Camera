@@ -10,6 +10,7 @@ data class PixelSize(val width: Int, val height: Int) {
 data class LensTarget(
     val logicalCameraId: String,
     val physicalCameraId: String? = null,
+    val facing: LensFacing? = null,
 ) {
     val stableKey: String = physicalCameraId?.let { "$logicalCameraId::$it" } ?: logicalCameraId
 }
