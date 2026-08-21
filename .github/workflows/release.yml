@@ -20,7 +20,7 @@ jobs:
         with:
           cmdline-tools-version: 15859902
           packages: platform-tools
-      - run: sdkmanager "platforms;android-37" "ndk;28.2.13676358" "cmake;3.22.1"
+      - run: sdkmanager "platforms;android-36" "ndk;28.2.13676358" "cmake;3.22.1"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.1'
