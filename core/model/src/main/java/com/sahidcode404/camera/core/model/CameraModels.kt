@@ -14,6 +14,20 @@ data class LensTarget(
     val stableKey: String = physicalCameraId?.let { "$logicalCameraId::$it" } ?: logicalCameraId
 }
 
+enum class LensValidationStatus { UNPROBED, CACHED, VALIDATED, FAILED }
+
+data class LensValidation(
+    val status: LensValidationStatus = LensValidationStatus.UNPROBED,
+    val previewUsable: Boolean? = null,
+    val rawStillUsable: Boolean? = null,
+    val continuousRawUsable: Boolean? = null,
+    val videoUsable: Boolean? = null,
+    val deliveredPreviewFrames: Int = 0,
+    val firstPreviewTimestampNs: Long? = null,
+    val lastPreviewTimestampNs: Long? = null,
+    val notes: List<String> = emptyList(),
+)
+
 data class LensDescriptor(
     val target: LensTarget,
     val facing: LensFacing,
@@ -31,6 +45,7 @@ data class LensDescriptor(
     val maxRawSize: PixelSize?,
     val previewSizes: List<PixelSize>,
     val fpsRanges: List<IntRange>,
+    val validation: LensValidation = LensValidation(),
 ) {
     val stableKey: String get() = target.stableKey
 }
