@@ -127,7 +127,7 @@ class Camera2ActiveProbe(
         val chars = characteristicsForTarget(lens)
         val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             ?: error("No stream configuration map")
-        val yuvSizes = map.getOutputSizes(ImageFormat.YUV_420_888).orEmpty()
+        val yuvSizes = map.getOutputSizes(ImageFormat.YUV_420_888) ?: emptyArray()
         if (yuvSizes.isEmpty()) error("No YUV_420_888 output")
         val size = choosePreviewProbeSize(yuvSizes, quirks.quirksFor(lens))
 
@@ -194,7 +194,7 @@ class Camera2ActiveProbe(
         val chars = characteristicsForTarget(lens)
         val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             ?: error("No stream configuration map for RAW")
-        val rawSizes = map.getOutputSizes(ImageFormat.RAW_SENSOR).orEmpty()
+        val rawSizes = map.getOutputSizes(ImageFormat.RAW_SENSOR) ?: emptyArray()
         if (rawSizes.isEmpty()) return false
         val size = rawSizes.minByOrNull { it.width.toLong() * it.height.toLong() } ?: return false
 
@@ -324,10 +324,10 @@ class Camera2ActiveProbe(
         val map = characteristicsForTarget(lens)
             .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             ?: return false
-        return map.getOutputSizes(MediaRecorder::class.java).orEmpty().isNotEmpty()
+        return (map.getOutputSizes(MediaRecorder::class.java) ?: emptyArray()).isNotEmpty()
     }
 
-    private fun choosePreviewProbeSize(sizes: Array<Size>, quirks: Set<CameraQuirk>): Size {
+    private fun choosePreviewProbeSize(sizes: Array<out Size>, quirks: Set<CameraQuirk>): Size {
         if (CameraQuirk.FORCE_SMALL_PREVIEW_PROBE in quirks) {
             return sizes.minBy { it.width.toLong() * it.height.toLong() }
         }
@@ -342,7 +342,7 @@ class Camera2ActiveProbe(
         builder: CaptureRequest.Builder,
         chars: CameraCharacteristics,
     ) {
-        val afModes = chars.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES).orEmpty()
+        val afModes = chars.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES) ?: intArrayOf()
         when {
             afModes.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) ->
                 builder.set(
