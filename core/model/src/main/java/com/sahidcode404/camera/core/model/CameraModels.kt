@@ -87,6 +87,24 @@ enum class UpscaleMode(val label: String) {
 
 enum class CameraSessionState { CLOSED, OPENING, CONFIGURING, PREVIEW, CLOSING, ERROR }
 
+/**
+ * Process-local startup signal. The viewfinder marks this only after the real Camera2 repeating
+ * request is streaming; discovery waits for it before beginning the hidden AUX/NDK metadata pass.
+ */
+object CameraRuntimeSignal {
+    @Volatile
+    var firstPreviewStreaming: Boolean = false
+        private set
+
+    fun markPreviewStreaming() {
+        firstPreviewStreaming = true
+    }
+
+    fun resetForProcessStartup() {
+        firstPreviewStreaming = false
+    }
+}
+
 enum class ProcessingStage {
     WAITING, INGESTING, SCORING, ALIGNING, FUSING, HDR, SUPER_RES, FINALIZING_RAW,
     WRITING_DNG, VALIDATING, COMPLETE, FAILED
