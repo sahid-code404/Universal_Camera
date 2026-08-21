@@ -38,3 +38,5 @@ jobs:
           name: Camera-0.1.2-unsigned
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+# Production signing happens outside the public repository with the permanent Camera key.
