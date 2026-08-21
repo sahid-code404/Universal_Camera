@@ -72,9 +72,16 @@ jobs:
           APK="ota/$APK_NAME"
           if [[ ! -f "$APK" ]]; then
             shopt -s nullglob
-            parts=("$APK".b64.part*)
-            (( ${#parts[@]} > 0 )) || { echo "APK and staged base64 parts are missing" >&2; exit 1; }
-            cat "${parts[@]}" | base64 --decode > "$APK"
+            gzip_parts=("$APK".gz.b64.part*)
+            plain_parts=("$APK".b64.part*)
+            if (( ${#gzip_parts[@]} > 0 )); then
+              cat "${gzip_parts[@]}" | base64 --decode | gzip --decompress --stdout > "$APK"
+            elif (( ${#plain_parts[@]} > 0 )); then
+              cat "${plain_parts[@]}" | base64 --decode > "$APK"
+            else
+              echo "APK and staged base64 parts are missing" >&2
+              exit 1
+            fi
           fi
 
           ACTUAL_SHA="$(sha256sum "$APK" | awk '{print $1}')"
