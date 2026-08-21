@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.SurfaceTexture
@@ -12,10 +13,16 @@ import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CaptureFailure
 import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.CaptureResult
+import android.hardware.camera2.DngCreator
+import android.hardware.camera2.TotalCaptureResult
 import android.hardware.camera2.params.MeteringRectangle
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
+import android.media.Image
+import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
@@ -23,19 +30,37 @@ import android.view.TextureView
 import androidx.core.content.ContextCompat
 import com.sahidcode404.camera.core.model.CameraSessionState
 import com.sahidcode404.camera.core.model.LensTarget
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import java.io.OutputStream
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+
+/** Metadata about a Phase-3 single sensor RAW capture that was encoded as DNG. */
+data class RawDngCaptureInfo(
+    val logicalCameraId: String,
+    val physicalCameraId: String?,
+    val width: Int,
+    val height: Int,
+    val sensorTimestampNs: Long,
+)
 
 class Camera2PreviewController(private val context: Context) : AutoCloseable {
     private val manager = context.getSystemService(CameraManager::class.java)
     private val cameraThread = HandlerThread("CameraControl").apply { start() }
     private val handler = Handler(cameraThread.looper)
     private val executor = Executor { command -> handler.post(command) }
+    private val rawCaptureMutex = Mutex()
 
     private val _state = MutableStateFlow(CameraSessionState.CLOSED)
     val state: StateFlow<CameraSessionState> = _state
@@ -138,6 +163,138 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
         }
     }
 
+    /**
+     * Captures exactly one maximum-size RAW_SENSOR frame, pairs it with the matching capture result,
+     * and writes a standards-based DNG directly to [destination]. No JPEG/HEIF intermediate exists.
+     *
+     * Phase 3 deliberately uses an exclusive RAW session. This is slower than a combined preview/RAW
+     * session but is more conservative across vendor HALs. Phase 4 will validate sustained combined RAW
+     * throughput before introducing ZSL/ring-buffer capture.
+     */
+    suspend fun captureSingleRawDng(destination: OutputStream): RawDngCaptureInfo = rawCaptureMutex.withLock {
+        val selected = target ?: error("No camera lens selected")
+        val device = camera ?: error("Camera is not open")
+        val myGeneration = generation
+        if (_state.value != CameraSessionState.PREVIEW) error("Camera preview is not ready")
+
+        val chars = characteristicsForTarget(selected)
+        val streamMap = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            ?: error("Selected lens has no stream configuration map")
+        val rawSize = (streamMap.getOutputSizes(ImageFormat.RAW_SENSOR) ?: emptyArray())
+            .maxByOrNull { it.width.toLong() * it.height.toLong() }
+            ?: error("Selected lens does not expose RAW_SENSOR output")
+
+        val reader = ImageReader.newInstance(
+            rawSize.width,
+            rawSize.height,
+            ImageFormat.RAW_SENSOR,
+            RAW_MAX_IMAGES,
+        )
+        val imageDeferred = CompletableDeferred<Image>()
+        val resultDeferred = CompletableDeferred<TotalCaptureResult>()
+        val imageRef = AtomicReference<Image?>(null)
+        var rawSession: CameraCaptureSession? = null
+
+        reader.setOnImageAvailableListener({ source ->
+            val image = runCatching { source.acquireNextImage() }.getOrNull()
+                ?: return@setOnImageAvailableListener
+            imageRef.set(image)
+            if (!imageDeferred.complete(image)) {
+                imageRef.compareAndSet(image, null)
+                image.close()
+            }
+        }, handler)
+
+        try {
+            _state.value = CameraSessionState.CONFIGURING
+            withContext(Dispatchers.Main.immediate) {
+                // TextureView remains alive; only its CameraCaptureSession is replaced temporarily.
+            }
+            closeCurrentSessionForReconfiguration()
+
+            rawSession = withTimeout(RAW_SESSION_TIMEOUT_MS) {
+                createRawCaptureSession(device, reader, selected, myGeneration)
+            }
+            session = rawSession
+
+            val stillBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                addTarget(reader.surface)
+                applySafeAutoControls(this, chars)
+                currentCropRegion?.let { set(CaptureRequest.SCALER_CROP_REGION, it) }
+            }
+
+            rawSession.capture(
+                stillBuilder.build(),
+                object : CameraCaptureSession.CaptureCallback() {
+                    override fun onCaptureCompleted(
+                        session: CameraCaptureSession,
+                        request: CaptureRequest,
+                        result: TotalCaptureResult,
+                    ) {
+                        resultDeferred.complete(result)
+                    }
+
+                    override fun onCaptureFailed(
+                        session: CameraCaptureSession,
+                        request: CaptureRequest,
+                        failure: CaptureFailure,
+                    ) {
+                        resultDeferred.completeExceptionally(
+                            IllegalStateException("RAW capture failed: reason=${failure.reason}"),
+                        )
+                    }
+                },
+                handler,
+            )
+
+            val image = withTimeout(RAW_CAPTURE_TIMEOUT_MS) { imageDeferred.await() }
+            val totalResult = withTimeout(RAW_CAPTURE_TIMEOUT_MS) { resultDeferred.await() }
+            if (generation != myGeneration || target != selected) {
+                error("Camera changed while RAW capture was in flight")
+            }
+
+            val resultForDng: CaptureResult = selected.physicalCameraId
+                ?.let { physicalId -> totalResult.physicalCameraResults[physicalId] }
+                ?: totalResult
+            val sensorTimestamp = resultForDng.get(CaptureResult.SENSOR_TIMESTAMP)
+                ?: totalResult.get(CaptureResult.SENSOR_TIMESTAMP)
+                ?: error("Capture result did not include SENSOR_TIMESTAMP")
+            require(sensorTimestamp == image.timestamp) {
+                "RAW image/result timestamp mismatch: image=${image.timestamp}, result=$sensorTimestamp"
+            }
+
+            withContext(Dispatchers.IO) {
+                DngCreator(chars, resultForDng).use { creator ->
+                    creator.setDescription("Camera sensor RAW")
+                    creator.setOrientation(exifOrientationForCurrentDisplay(chars))
+                    creator.writeImage(destination, image)
+                    destination.flush()
+                }
+            }
+
+            RawDngCaptureInfo(
+                logicalCameraId = selected.logicalCameraId,
+                physicalCameraId = selected.physicalCameraId,
+                width = rawSize.width,
+                height = rawSize.height,
+                sensorTimestampNs = sensorTimestamp,
+            )
+        } finally {
+            reader.setOnImageAvailableListener(null, null)
+            imageRef.getAndSet(null)?.close()
+            runCatching { rawSession?.abortCaptures() }
+            runCatching { rawSession?.close() }
+            if (session === rawSession) session = null
+            runCatching { reader.close() }
+
+            handler.post {
+                if (generation == myGeneration && camera === device && target == selected && textureView?.isAvailable == true) {
+                    createSession(device, selected, myGeneration)
+                }
+            }
+        }
+    }
+
     private val listener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) = reopen()
         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
@@ -190,10 +347,12 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
                     camera = device
                     createSession(device, selected, myGeneration)
                 }
+
                 override fun onDisconnected(device: CameraDevice) {
                     device.close()
                     if (myGeneration == generation) _state.value = CameraSessionState.ERROR
                 }
+
                 override fun onError(device: CameraDevice, error: Int) {
                     device.close()
                     if (myGeneration == generation) _state.value = CameraSessionState.ERROR
@@ -232,18 +391,9 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
                         val requestChars = characteristicsForTarget(selected)
                         requestCharacteristics = requestChars
                         activeArray = requestChars.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
-                        val afModes = requestChars.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES) ?: intArrayOf()
-                        val afMode = when {
-                            afModes.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) -> CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                            afModes.contains(CaptureRequest.CONTROL_AF_MODE_AUTO) -> CaptureRequest.CONTROL_AF_MODE_AUTO
-                            else -> CaptureRequest.CONTROL_AF_MODE_OFF
-                        }
                         val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                             addTarget(surface)
-                            set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
-                            set(CaptureRequest.CONTROL_AF_MODE, afMode)
-                            set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-                            set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO)
+                            applySafeAutoControls(this, requestChars)
                         }
                         previewRequestBuilder = builder
                         applyZoom(builder, requestChars, currentZoomRatio)
@@ -256,12 +406,13 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
                         view.post { configureTransform(view.width, view.height) }
                     }.onFailure { _state.value = CameraSessionState.ERROR }
                 }
+
                 override fun onConfigureFailed(captureSession: CameraCaptureSession) {
                     captureSession.close()
                     surface.release()
                     if (myGeneration == generation) _state.value = CameraSessionState.ERROR
                 }
-            }
+            },
         )
         try {
             device.createCaptureSession(config)
@@ -269,6 +420,70 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
             surface.release()
             _state.value = CameraSessionState.ERROR
         }
+    }
+
+    private suspend fun createRawCaptureSession(
+        device: CameraDevice,
+        reader: ImageReader,
+        selected: LensTarget,
+        myGeneration: Long,
+    ): CameraCaptureSession {
+        val deferred = CompletableDeferred<CameraCaptureSession>()
+        handler.post {
+            if (generation != myGeneration || camera !== device || target != selected) {
+                deferred.completeExceptionally(IllegalStateException("Camera changed before RAW session setup"))
+                return@post
+            }
+            val output = OutputConfiguration(reader.surface).apply {
+                selected.physicalCameraId?.let { setPhysicalCameraId(it) }
+            }
+            val config = SessionConfiguration(
+                SessionConfiguration.SESSION_REGULAR,
+                listOf(output),
+                executor,
+                object : CameraCaptureSession.StateCallback() {
+                    override fun onConfigured(captureSession: CameraCaptureSession) {
+                        if (generation == myGeneration && camera === device && target == selected) {
+                            deferred.complete(captureSession)
+                        } else {
+                            captureSession.close()
+                            deferred.completeExceptionally(IllegalStateException("Camera changed during RAW session setup"))
+                        }
+                    }
+
+                    override fun onConfigureFailed(captureSession: CameraCaptureSession) {
+                        captureSession.close()
+                        deferred.completeExceptionally(IllegalStateException("RAW capture-session configuration failed"))
+                    }
+                },
+            )
+            runCatching { device.createCaptureSession(config) }
+                .onFailure { deferred.completeExceptionally(it) }
+        }
+        return deferred.await()
+    }
+
+    private fun closeCurrentSessionForReconfiguration() {
+        runCatching { session?.stopRepeating() }
+        runCatching { session?.abortCaptures() }
+        runCatching { session?.close() }
+        session = null
+        previewRequestBuilder = null
+        runCatching { previewSurface?.release() }
+        previewSurface = null
+    }
+
+    private fun applySafeAutoControls(builder: CaptureRequest.Builder, chars: CameraCharacteristics) {
+        builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+        val afModes = chars.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES) ?: intArrayOf()
+        val afMode = when {
+            afModes.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) -> CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+            afModes.contains(CaptureRequest.CONTROL_AF_MODE_AUTO) -> CaptureRequest.CONTROL_AF_MODE_AUTO
+            else -> CaptureRequest.CONTROL_AF_MODE_OFF
+        }
+        builder.set(CaptureRequest.CONTROL_AF_MODE, afMode)
+        builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+        builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO)
     }
 
     private fun setZoomRatioInternal(requested: Float) {
@@ -384,6 +599,14 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
         }
     }
 
+    private fun exifOrientationForCurrentDisplay(chars: CameraCharacteristics): Int =
+        when (relativeRotationDegrees(chars, textureView?.display?.rotation ?: Surface.ROTATION_0)) {
+            90 -> 6 // ExifInterface.ORIENTATION_ROTATE_90
+            180 -> 3 // ExifInterface.ORIENTATION_ROTATE_180
+            270 -> 8 // ExifInterface.ORIENTATION_ROTATE_270
+            else -> 1 // ExifInterface.ORIENTATION_NORMAL
+        }
+
     private fun characteristicsForTarget(selected: LensTarget): CameraCharacteristics =
         runCatching {
             manager.getCameraCharacteristics(selected.physicalCameraId ?: selected.logicalCameraId)
@@ -400,15 +623,9 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
 
     private fun closeCameraInternal() {
         _state.value = CameraSessionState.CLOSING
-        runCatching { session?.stopRepeating() }
-        runCatching { session?.abortCaptures() }
-        runCatching { session?.close() }
+        closeCurrentSessionForReconfiguration()
         runCatching { camera?.close() }
-        runCatching { previewSurface?.release() }
-        session = null
         camera = null
-        previewSurface = null
-        previewRequestBuilder = null
         requestCharacteristics = null
         activeArray = null
         currentCropRegion = null
@@ -421,5 +638,11 @@ class Camera2PreviewController(private val context: Context) : AutoCloseable {
             closeCameraInternal()
             cameraThread.quitSafely()
         }
+    }
+
+    companion object {
+        private const val RAW_MAX_IMAGES = 2
+        private const val RAW_SESSION_TIMEOUT_MS = 5_000L
+        private const val RAW_CAPTURE_TIMEOUT_MS = 8_000L
     }
 }
