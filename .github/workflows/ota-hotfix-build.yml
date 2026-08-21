@@ -3,6 +3,8 @@ name: OTA Hotfix Build
 on:
   push:
     branches: [ "release/0.1.1-orientation-hotfix" ]
+  pull_request:
+    branches: [ main ]
 
 permissions:
   contents: read
