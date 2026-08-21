@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Pixel 11 Pro XL Camera — Detailed UI Prototype</title>
+<style>
+:root{
+  --black:#000;--bg:#101114;--sheet:#151619;--tile:#242529;--tile2:#303136;
+  --text:#f8f9fa;--muted:#b8bbc1;--line:#34363b;--blue:#cbd8ff;--blue2:#a8c7fa;
+  --blueText:#17345e;--red:#ef5361;--green:#9ad29f
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#16171a;color:var(--text);font-family:Roboto,Arial,system-ui,sans-serif}
+button,input,select{font:inherit}button{user-select:none;-webkit-tap-highlight-color:transparent}
+#root{height:100%;display:grid;place-items:center}
+.phone{position:relative;width:100%;height:100%;max-width:492px;background:#000;overflow:hidden;touch-action:none}
+.vf{position:absolute;left:0;right:0;top:0;height:65.4%;overflow:hidden;background:
+radial-gradient(circle at 74% 17%,rgba(255,238,187,.30),transparent 18%),
+linear-gradient(180deg,#506a7f 0%,#78909e 35%,#aeb9be 49%,#67716d 50%,#262b28 100%)}
+.scene{position:absolute;inset:0;transform-origin:center;transition:transform .12s ease,filter .12s ease}
+.sun{position:absolute;right:-50px;top:66px;width:280px;height:280px;border-radius:50%;background:rgba(255,232,180,.17);filter:blur(30px)}
+.mountains{position:absolute;left:-9%;right:-9%;bottom:17%;height:46%;background:
+linear-gradient(164deg,transparent 0 34%,rgba(43,50,51,.95) 35% 54%,transparent 55%),
+linear-gradient(197deg,transparent 0 40%,rgba(29,35,35,.96) 41% 59%,transparent 60%)}
+.tree{position:absolute;bottom:1%;width:145px;height:235px}
+.tree:before{content:"";position:absolute;left:61px;bottom:0;width:18px;height:143px;background:#35281e}
+.tree:after{content:"";position:absolute;left:12px;top:0;width:121px;height:129px;border-radius:50%;background:radial-gradient(circle at 42% 36%,#7c8d59,#33482b 72%)}
+.tree.l{left:-37px}.tree.r{right:-49px;transform:scale(1.12)}
+.person{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);width:128px;height:218px}
+.head{position:absolute;top:0;left:50%;transform:translateX(-50%);width:66px;height:66px;border-radius:50%;background:linear-gradient(#e0baa0,#b77e66)}
+.body{position:absolute;left:9px;right:9px;top:58px;height:160px;border-radius:44px 44px 23px 23px;background:linear-gradient(145deg,#728356,#2b3b22)}
+.crop{position:absolute;inset:0;pointer-events:none}.crop.wide:before,.crop.wide:after{content:"";position:absolute;left:0;right:0;height:9.2%;background:rgba(0,0,0,.63)}
+.crop.wide:before{top:0}.crop.wide:after{bottom:0}
+.grid{position:absolute;inset:0;pointer-events:none;opacity:0}
+.grid.show{opacity:.45}
+.grid.g3{background:linear-gradient(to right,transparent 33.16%,#fff 33.28%,transparent 33.43%,transparent 66.55%,#fff 66.67%,transparent 66.82%),linear-gradient(to bottom,transparent 33.16%,#fff 33.28%,transparent 33.43%,transparent 66.55%,#fff 66.67%,transparent 66.82%)}
+.grid.g4{background:linear-gradient(to right,transparent 24.9%,#fff 25%,transparent 25.13%,transparent 49.9%,#fff 50%,transparent 50.13%,transparent 74.9%,#fff 75%,transparent 75.13%),linear-gradient(to bottom,transparent 24.9%,#fff 25%,transparent 25.13%,transparent 49.9%,#fff 50%,transparent 50.13%,transparent 74.9%,#fff 75%,transparent 75.13%)}
+.grid.golden{background:linear-gradient(to right,transparent 38.08%,#fff 38.2%,transparent 38.35%,transparent 61.65%,#fff 61.8%,transparent 61.95%),linear-gradient(to bottom,transparent 38.08%,#fff 38.2%,transparent 38.35%,transparent 61.65%,#fff 61.8%,transparent 61.95%)}
+.level{position:absolute;z-index:7;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;text-shadow:0 1px 4px #000;transition:.15s}.level.hide{opacity:0}
+.level span:first-child,.level span:last-child{width:43px;height:2px;background:#fff;border-radius:2px}.level b{font-size:10px}
+.focus{position:absolute;z-index:12;width:67px;height:67px;border:2px solid white;border-radius:50%;transform:translate(-50%,-50%);opacity:0;pointer-events:none}
+.focus.lock:after{content:"🔒";position:absolute;right:-13px;bottom:-8px;font-size:14px}
+.focus.go{animation:focus .68s ease}@keyframes focus{0%{opacity:0;scale:1.35}35%{opacity:1;scale:1}76%{opacity:1}100%{opacity:0;scale:.92}}
+.topbar{position:absolute;z-index:18;left:0;right:0;top:0;padding:max(13px,env(safe-area-inset-top)) 11px 0;display:flex;justify-content:space-between;pointer-events:none}
+.topgroup{display:flex;gap:7px;pointer-events:auto}
+.topbtn{height:35px;min-width:39px;border:0;border-radius:18px;padding:0 11px;background:rgba(0,0,0,.50);backdrop-filter:blur(9px);color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+.topbtn.circle{width:38px;min-width:38px;padding:0;border-radius:50%}.topbtn.on{background:#dce6ff;color:#17345e}
+.mode-status{position:absolute;z-index:15;top:57px;left:50%;transform:translateX(-50%);font-size:11px;padding:6px 9px;border-radius:15px;background:rgba(0,0,0,.48);display:none;white-space:nowrap}.mode-status.show{display:block}
+.quick-zone{position:absolute;z-index:17;top:22%;bottom:82px;width:49px;display:flex;flex-direction:column;justify-content:center;gap:10px;opacity:0;pointer-events:none;transition:.15s}
+.quick-zone.visible{opacity:1;pointer-events:auto}.quick-zone.left{left:8px}.quick-zone.right{right:8px}
+.qbtn{width:43px;height:43px;border:0;border-radius:50%;background:rgba(20,22,25,.77);color:white;font-size:15px;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.qbtn.active{background:#dce6ff;color:#17345e}.qbtn small{font-size:9px;font-weight:800}
+.quick-pop{position:absolute;z-index:20;left:50%;bottom:71px;transform:translateX(-50%);min-width:265px;max-width:92%;padding:11px 13px;border-radius:25px;background:rgba(20,21,24,.94);display:none;align-items:center;gap:10px;box-shadow:0 5px 22px rgba(0,0,0,.38)}
+.quick-pop.show{display:flex}.quick-pop label{font-size:11px;width:63px;color:#dce0e6}.quick-pop input{flex:1;accent-color:#dce6ff}.quick-pop .value{width:43px;text-align:center;font-size:12px;font-weight:700}
+.macro-badge{position:absolute;z-index:14;left:12px;bottom:73px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(0,0,0,.69);color:#fff;display:none;place-items:center;font-size:19px;cursor:pointer}.macro-badge.show{display:grid}.macro-badge.on{background:#dce6ff;color:#17345e}
+.zoom-area{position:absolute;z-index:18;left:50%;bottom:8px;transform:translateX(-50%);height:47px;display:flex;align-items:center}
+.zoom-preset{display:flex;height:46px;padding:4px;background:rgba(0,0,0,.74);border-radius:24px}
+.zbtn{border:0;width:47px;height:38px;border-radius:20px;background:transparent;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.zbtn.active{background:#e2e8ff;color:#17345e}
+.lens-preset{display:none;height:46px;padding:4px;background:rgba(0,0,0,.74);border-radius:24px;gap:3px}
+.lens-preset.show{display:flex}.zoom-preset.hide{display:none}
+.lensbtn{border:0;min-width:56px;height:38px;border-radius:20px;background:transparent;color:#fff;font-size:12px;font-weight:700;cursor:pointer}.lensbtn.active{background:#e2e8ff;color:#17345e}
+.zoom-slider{position:absolute;z-index:22;left:11px;right:11px;bottom:7px;height:56px;border-radius:29px;background:rgba(19,20,23,.96);display:none;align-items:center;gap:9px;padding:0 13px;box-shadow:0 4px 20px rgba(0,0,0,.45)}
+.zoom-slider.show{display:flex}.zoom-slider input{flex:1;accent-color:#dce6ff}.zoom-slider .edge{font-size:10px;color:#d7dbe2}.zoom-slider .zv{width:45px;text-align:center;font-weight:800;font-size:13px}
+.stabilize{position:absolute;z-index:16;right:12px;bottom:72px;border:0;height:38px;border-radius:19px;padding:0 12px;background:rgba(0,0,0,.70);color:#fff;font-size:11px;font-weight:700;display:none;cursor:pointer}.stabilize.show{display:block}.stabilize.on{background:#dce6ff;color:#17345e}
+.navigator{position:absolute;z-index:14;right:12px;top:74px;width:92px;height:70px;border:2px solid rgba(255,255,255,.9);border-radius:8px;background:linear-gradient(#6c8190,#343d38);display:none;overflow:hidden}.navigator.show{display:block}.navigator:before,.navigator:after{content:"";position:absolute;background:#fff}.navigator:before{width:18px;height:2px;left:50%;top:50%;transform:translate(-50%,-50%)}.navigator:after{width:2px;height:18px;left:50%;top:50%;transform:translate(-50%,-50%)}
+.recordbar{position:absolute;z-index:15;top:60px;left:50%;transform:translateX(-50%);height:30px;border-radius:16px;background:rgba(0,0,0,.58);padding:0 11px;display:none;align-items:center;gap:7px;font-size:12px}.recordbar.show{display:flex}.dot{width:8px;height:8px;border-radius:50%;background:#ff4655}
+.panorama-ui{position:absolute;z-index:13;inset:80px 18px 70px;display:none;pointer-events:none}.panorama-ui.show{display:block}.pano-line{position:absolute;left:9%;right:9%;top:50%;height:2px;background:rgba(255,255,255,.75)}.pano-dot{position:absolute;top:calc(50% - 8px);left:9%;width:16px;height:16px;border-radius:50%;border:2px solid #fff;background:#8ab4f8;transition:left .12s}.pano-arrow{position:absolute;top:calc(50% - 42px);left:50%;transform:translateX(-50%);font-size:36px}.pano-hint{position:absolute;top:calc(50% + 26px);left:0;right:0;text-align:center;font-size:12px}
+.bottom{position:absolute;z-index:20;left:0;right:0;bottom:0;height:34.6%;background:#000;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+.modes{height:57px;display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;padding:8px 18px}.modes::-webkit-scrollbar{display:none}
+.mode{border:0;height:37px;border-radius:19px;padding:0 14px;background:transparent;color:#fff;font-size:13px;white-space:nowrap;cursor:pointer}.mode.active{background:#c9d7ff;color:#17345e;font-weight:700}
+.main{height:94px;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;padding:0 32px}
+.thumb{justify-self:start;width:50px;height:50px;border-radius:14px;border:2px solid #5f6368;background:linear-gradient(145deg,#5b6f77,#2d373c);background-size:cover;background-position:center;cursor:pointer}
+.shutter{justify-self:center;width:78px;height:78px;border:5px solid #5f6368;border-radius:50%;background:#fff;cursor:pointer;transition:.15s}.shutter.rec{width:58px;height:58px;border-radius:18px;background:#ef5361;border-color:#3c4043}
+.switch{justify-self:end;width:50px;height:50px;border:0;border-radius:15px;background:#303136;color:#fff;font-size:22px;cursor:pointer}
+.record-extra{position:absolute;left:0;right:0;top:65px;display:none;justify-content:center;gap:110px;pointer-events:none}.record-extra.show{display:flex}.record-extra button{pointer-events:auto;width:44px;height:44px;border:0;border-radius:50%;background:#303136;color:#fff;cursor:pointer}
+.lower{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 20px}
+.round{width:50px;height:50px;border:0;border-radius:50%;background:#2d2f33;color:#fff;display:grid;place-items:center;cursor:pointer;font-size:20px}
+.segment{height:50px;border-radius:25px;background:#303136;display:flex;padding:4px}.segment button{width:59px;border:0;border-radius:21px;background:transparent;color:#fff;font-size:10px;font-weight:800;cursor:pointer}.segment button.active{background:#93b8ff;color:#17345e}
+.toast{position:absolute;z-index:90;left:50%;bottom:39%;transform:translateX(-50%);background:#303134;color:#fff;border-radius:20px;padding:8px 14px;font-size:12px;opacity:0;transition:.16s;pointer-events:none;white-space:nowrap}.toast.show{opacity:1}
+.flash{position:absolute;z-index:95;inset:0;background:white;opacity:0;pointer-events:none}.flash.go{animation:flash .20s ease}@keyframes flash{0%{opacity:0}13%{opacity:1}100%{opacity:0}}
+.sheet-bg{position:absolute;z-index:55;inset:0;background:rgba(0,0,0,.20);display:none}.sheet-bg.show{display:block}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:80%;overflow:auto;background:#16171a;border-radius:28px 28px 0 0;padding:10px 16px max(22px,env(safe-area-inset-bottom));box-shadow:0 -12px 50px rgba(0,0,0,.38)}
+.handle{width:40px;height:4px;border-radius:2px;background:#777a80;margin:0 auto 12px}
+.sheet-title{font-size:19px;font-weight:700;margin:0 0 12px 3px}
+.tabs{display:flex;gap:8px;margin-bottom:13px}.tab{height:36px;border:0;border-radius:18px;padding:0 18px;background:#292b2f;color:#fff;cursor:pointer}.tab.active{background:#d3ddff;color:#17345e}
+.panel{display:none}.panel.active{display:block}
+.setting-row{display:grid;grid-template-columns:1fr auto;align-items:center;min-height:62px;border-bottom:1px solid #2d2f33;gap:10px;padding:7px 2px}.setting-row b{font-size:13px}.setting-row small{display:block;color:#aeb3ba;font-size:11px;margin-top:3px}
+.choices{display:flex;gap:5px;align-items:center}.choices button{min-width:42px;height:34px;border:0;border-radius:17px;background:#2a2c30;color:#fff;padding:0 10px;font-size:11px;cursor:pointer}.choices button.active{background:#d3ddff;color:#17345e}
+.more-row{width:100%;height:49px;border:0;border-radius:15px;background:#242529;color:#fff;text-align:left;padding:0 14px;margin-top:11px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.pro-control{padding:12px 2px;border-bottom:1px solid #2d2f33}.pro-head{display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px}.pro-control input{width:100%;accent-color:#a8c7fa}
+.switcher{appearance:none;width:47px;height:28px;border-radius:999px;background:#484b51;position:relative;cursor:pointer}.switcher:checked{background:#8ab4f8}.switcher:after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:white;transition:.18s}.switcher:checked:after{transform:translateX(19px)}
+.full{position:absolute;z-index:65;inset:0;background:#101114;display:none}.full.show{display:block}
+.pagebar{height:max(68px,calc(54px + env(safe-area-inset-top)));padding-top:max(10px,env(safe-area-inset-top));display:flex;align-items:center;gap:10px;padding-left:12px;padding-right:12px;border-bottom:1px solid #26272b}
+.back{width:42px;height:42px;border:0;border-radius:50%;background:transparent;color:#fff;font-size:25px;cursor:pointer}.pagetitle{font-size:19px;font-weight:700}
+.page{height:calc(100% - max(68px,calc(54px + env(safe-area-inset-top))));overflow:auto;padding:7px 18px 35px}
+.section{margin:18px 2px 7px;color:#aeb4bc;text-transform:uppercase;letter-spacing:.05em;font-size:11px;font-weight:700}
+.pref{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;min-height:64px;border-bottom:1px solid #292b2f}.pref b{font-size:14px}.pref small{display:block;color:#aeb3ba;font-size:11px;margin-top:4px}.pref .value{font-size:12px;color:#bdc2c8}
+.subpage{position:absolute;z-index:70;inset:0;background:#101114;display:none}.subpage.show{display:block}
+.qa-preview{height:230px;margin:8px 0 16px;border-radius:22px;background:linear-gradient(#657b8b,#333b37);position:relative;overflow:hidden}.qa-preview:after{content:"Tap the viewfinder to reveal controls";position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:11px;white-space:nowrap;background:rgba(0,0,0,.6);padding:6px 9px;border-radius:15px}
+.slot{position:absolute;width:45px;height:45px;border:1px dashed rgba(255,255,255,.75);border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);font-size:9px;text-align:center;padding:3px}
+.slot.s1{left:12px;top:62px}.slot.s2{left:12px;top:120px}.slot.s3{right:12px;top:62px}.slot.s4{right:12px;top:120px}
+.control-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}.control-item{border:0;min-height:58px;border-radius:16px;background:#242529;color:#fff;padding:10px;text-align:left;cursor:pointer}.control-item.selected{background:#34415f}.control-item b{display:block;font-size:12px}.control-item small{font-size:10px;color:#aeb3ba}
+.storage-card{background:#202226;border-radius:18px;padding:14px;margin:10px 0}.storagebar{height:8px;border-radius:4px;background:#35373c;overflow:hidden;margin:9px 0}.storagebar span{display:block;width:64%;height:100%;background:#8ab4f8}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.gallery img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px}.empty{grid-column:1/-1;text-align:center;color:#aeb3ba;padding:80px 20px}
+.mode-options{position:absolute;z-index:25;left:50%;bottom:70px;transform:translateX(-50%);display:none;gap:6px;background:rgba(18,19,22,.92);padding:5px;border-radius:22px}.mode-options.show{display:flex}.mode-options button{border:0;height:34px;border-radius:17px;background:transparent;color:#fff;padding:0 11px;font-size:11px}.mode-options button.active{background:#d3ddff;color:#17345e}
+@media(min-width:700px){.phone{height:min(96vh,996px);width:min(448px,46vh);border-radius:36px;box-shadow:0 30px 100px rgba(0,0,0,.65)}}
+
+/* ===== Pixel polish pass: geometry, spacing, rounded surfaces ===== */
+:root{
+  --preview-radius:30px;
+  --sheet-radius:32px;
+  --control-radius:22px;
+  --surface-hi:#2a2c31;
+  --surface-lo:#1a1b1f;
+}
+html,body{background:#0c0d0f}
+.phone{background:#000;isolation:isolate}
+.vf{
+  left:6px;right:6px;top:6px;height:64.65%;
+  border-radius:var(--preview-radius);
+  box-shadow:0 0 0 1px rgba(255,255,255,.035),0 10px 32px rgba(0,0,0,.32);
+  background-clip:padding-box;
+}
+.scene{border-radius:inherit;overflow:hidden}
+.crop,.grid{border-radius:inherit}
+.topbar{padding:max(16px,env(safe-area-inset-top)) 13px 0}
+.topbtn{height:36px;border-radius:18px;background:rgba(17,18,21,.58);box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 4px 14px rgba(0,0,0,.16)}
+.topbtn.circle{width:40px;min-width:40px}
+.topbtn:active,.round:active,.switch:active,.zbtn:active,.lensbtn:active,.mode:active,.choices button:active{transform:scale(.94)}
+.topbtn,.round,.switch,.zbtn,.lensbtn,.mode,.choices button,.tab,.card,.more-row{transition:transform .12s ease,background .16s ease,color .16s ease,box-shadow .16s ease}
+.focus{box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.level{top:51%}
+.zoom-area{bottom:11px}
+.zoom-preset,.lens-preset{height:48px;border-radius:25px;padding:5px;background:rgba(8,9,11,.75);backdrop-filter:blur(12px)}
+.zbtn{height:38px;border-radius:20px;min-width:47px}
+.zbtn.active,.lensbtn.active{box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.zoom-slider{bottom:10px;height:58px;border-radius:29px;background:rgba(22,23,26,.96);border:1px solid rgba(255,255,255,.06)}
+.navigator{border-radius:12px;box-shadow:0 5px 18px rgba(0,0,0,.34)}
+.macro-badge,.stabilize{box-shadow:0 3px 14px rgba(0,0,0,.26)}
+.bottom{
+  height:35.15%;
+  border-radius:30px 30px 0 0;
+  background:linear-gradient(180deg,#050506 0%,#000 23%);
+  box-shadow:0 -1px 0 rgba(255,255,255,.035),0 -10px 32px rgba(0,0,0,.22);
+  padding-bottom:max(13px,env(safe-area-inset-bottom));
+}
+.modes{height:59px;padding:10px 15px 8px;gap:4px;mask-image:linear-gradient(90deg,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%)}
+.mode{height:36px;border-radius:18px;padding:0 14px;font-size:12.5px;font-weight:500;letter-spacing:.005em}
+.mode.active{font-weight:700;box-shadow:0 1px 0 rgba(255,255,255,.18) inset}
+.main{height:92px;padding:0 34px}
+.thumb{width:52px;height:52px;border-radius:16px;border:2px solid #666a70;box-shadow:0 5px 18px rgba(0,0,0,.28)}
+.shutter{width:80px;height:80px;border:5px solid #55585e;box-shadow:0 0 0 3px #000,0 4px 14px rgba(0,0,0,.35);position:relative}
+.shutter:after{content:"";position:absolute;inset:5px;border-radius:50%;border:1px solid rgba(0,0,0,.04)}
+.shutter.rec{box-shadow:0 0 0 3px #000,0 4px 14px rgba(0,0,0,.35)}
+.switch{width:52px;height:52px;border-radius:17px;background:#2d2f34;box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 5px 18px rgba(0,0,0,.25)}
+.lower{height:58px;padding:0 22px}
+.round{width:50px;height:50px;background:#292b30;box-shadow:0 1px 0 rgba(255,255,255,.05) inset}
+.segment{height:50px;border-radius:25px;background:#292b30;padding:4px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+.segment button{width:60px;border-radius:21px;letter-spacing:.045em;font-size:9.5px}
+.segment button.active{box-shadow:0 2px 9px rgba(0,0,0,.16)}
+.quick-zone{width:51px}.qbtn{width:44px;height:44px;border:1px solid rgba(255,255,255,.04);box-shadow:0 4px 16px rgba(0,0,0,.28)}
+.quick-pop{bottom:77px;border-radius:28px;padding:13px 15px;border:1px solid rgba(255,255,255,.06)}
+.mode-options{bottom:78px;border-radius:24px;padding:6px;background:rgba(23,24,28,.96);border:1px solid rgba(255,255,255,.05)}
+.recordbar{top:66px;border:1px solid rgba(255,255,255,.05);backdrop-filter:blur(12px)}
+.sheet-bg{backdrop-filter:blur(2px)}
+.sheet{
+  border-radius:var(--sheet-radius) var(--sheet-radius) 0 0;
+  max-height:84%;
+  padding:11px 20px max(28px,env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,#1b1c20 0,#151619 70px);
+  border-top:1px solid rgba(255,255,255,.055);
+}
+.handle{width:36px;height:4px;background:#75787f;margin-bottom:17px}
+.sheet-title{font-size:20px;letter-spacing:-.015em;margin-bottom:15px}
+.tabs{gap:8px;margin-bottom:14px}.tab{height:38px;border-radius:19px;padding:0 20px;background:#292b30;font-size:12.5px}
+.setting-row{min-height:67px;padding:9px 2px;border-bottom:1px solid rgba(255,255,255,.075)}
+.setting-row b{font-size:13.5px;font-weight:650}.setting-row small{font-size:11px;line-height:1.34;max-width:245px}
+.choices{gap:6px}.choices button{min-width:43px;height:35px;border-radius:18px;background:#292b30;padding:0 11px}
+.choices button.active{box-shadow:0 1px 0 rgba(255,255,255,.18) inset}
+.more-row{height:52px;border-radius:18px;background:#25272b;padding:0 16px;margin-top:13px}
+.pro-control{padding:14px 2px}.pro-head{font-size:12.5px}
+.switcher{width:48px;height:29px}.switcher:after{width:23px;height:23px}
+.full,.subpage{background:#101114}
+.pagebar{background:#101114;border-bottom:1px solid rgba(255,255,255,.065);padding-left:10px}.pagetitle{font-size:20px;letter-spacing:-.015em}
+.page{padding:8px 20px 38px}.section{margin-top:21px;color:#9fa5ad}
+.pref{min-height:68px;border-bottom:1px solid rgba(255,255,255,.075)}.pref b{font-size:14px}.pref small{line-height:1.35;max-width:270px}
+.storage-card{border-radius:22px;background:#1e2024;padding:16px;border:1px solid rgba(255,255,255,.045)}
+.qa-preview{border-radius:26px;border:1px solid rgba(255,255,255,.05);box-shadow:0 8px 25px rgba(0,0,0,.28)}
+.slot{width:47px;height:47px;border-radius:50%;backdrop-filter:blur(8px)}
+.control-item{border-radius:18px;min-height:62px;background:#24262a;border:1px solid rgba(255,255,255,.04)}
+.control-item.selected{box-shadow:0 0 0 1px rgba(168,199,250,.25) inset}
+.toast{bottom:40%;padding:9px 15px;box-shadow:0 5px 20px rgba(0,0,0,.32)}
+.gesture-pill{position:absolute;z-index:100;left:50%;bottom:5px;transform:translateX(-50%);width:106px;height:4px;border-radius:999px;background:rgba(255,255,255,.82);pointer-events:none}
+.lens-readout{position:absolute;z-index:16;left:50%;top:63px;transform:translateX(-50%);height:27px;padding:0 10px;border-radius:14px;background:rgba(0,0,0,.40);backdrop-filter:blur(8px);display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;opacity:.0;transition:.18s;pointer-events:none}
+.lens-readout.show{opacity:1}.lens-readout i{width:5px;height:5px;border-radius:50%;background:#b6c8ff}
+.pref.clickable,.setting-row.clickable{cursor:pointer}
+.pref.clickable:active,.setting-row.clickable:active{background:rgba(255,255,255,.025)}
+.subtle-note{font-size:10.5px;color:#9fa5ad;line-height:1.45;padding:10px 2px 2px}
+.chev{font-size:21px;color:#aeb3ba}
+button:focus-visible,input:focus-visible{outline:2px solid #a8c7fa;outline-offset:2px}
+@media(max-height:720px){.modes{height:50px;padding-top:6px}.main{height:82px}.lower{height:50px}.bottom{height:36%}.vf{height:63.5%}}
+
+
+/* Pixel Camera alignment + zoom animation accuracy pass */
+.bottom{display:flex;flex-direction:column;overflow:hidden}
+.main{order:1;height:96px;flex:0 0 96px;padding:2px 34px 0}
+.record-extra{top:30px}
+.modes{
+  order:2;height:51px;flex:0 0 51px;padding:5px 0 5px;gap:7px;
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:x mandatory;
+  scroll-behavior:smooth;mask-image:none;-webkit-mask-image:none;
+  overscroll-behavior-x:contain;
+}
+.modes::before,.modes::after{content:"";flex:0 0 calc(50% - 31px)}
+.mode{height:36px;padding:0 14px;border-radius:18px;scroll-snap-align:center;scroll-snap-stop:always;flex:0 0 auto;color:#c8c9ce;font-size:13px}
+.mode.active{color:#172f55;background:#d8e2ff;box-shadow:none}
+.lower{order:3;height:58px;flex:0 0 58px;padding:0 22px 5px}
+
+/* Current Pixel preset zooms are individual circles, not one enclosing pill. */
+.zoom-area{bottom:11px;transition:opacity .14s ease,transform .22s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform}
+.zoom-area.linger-hidden{opacity:0;transform:translateX(-50%) translateY(5px) scale(.9);pointer-events:none}
+.zoom-preset{height:46px;padding:0;gap:9px;background:transparent;backdrop-filter:none}
+.zbtn{
+  width:43px;min-width:43px;height:43px;border-radius:50%;padding:0;
+  border:2px solid rgba(255,255,255,.88);background:rgba(9,10,12,.22);color:#fff;
+  text-shadow:0 1px 4px rgba(0,0,0,.6);backdrop-filter:blur(5px);
+  transition:background .17s ease,color .17s ease,border-color .17s ease,transform .22s cubic-bezier(.2,1.45,.3,1),box-shadow .2s ease;
+}
+.zbtn.active{background:#e2e7f8;color:#242934;border-color:#e2e7f8;text-shadow:none;transform:scale(1.08);box-shadow:0 3px 12px rgba(0,0,0,.24)}
+.zbtn.preset-pulse{animation:presetPulse .36s cubic-bezier(.18,1.55,.32,1)}
+@keyframes presetPulse{0%{transform:scale(1)}48%{transform:scale(1.20)}100%{transform:scale(1.08)}}
+
+/* Precision zoom expands from the preset strip, floats a value chip, then lingers before collapsing. */
+.zoom-slider{
+  display:flex;left:12px;right:12px;bottom:8px;height:62px;border-radius:31px;padding:0 16px;
+  background:rgba(28,27,25,.91);border:0;box-shadow:0 7px 26px rgba(0,0,0,.38);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transform:translateY(7px) scaleX(.78);transform-origin:var(--zoom-origin,50%) 100%;
+  transition:opacity .13s ease,transform .26s cubic-bezier(.18,.86,.22,1),visibility 0s linear .26s;
+  overflow:visible;backdrop-filter:blur(14px);
+}
+.zoom-slider.show{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scaleX(1);transition:opacity .13s ease,transform .28s cubic-bezier(.18,.9,.2,1),visibility 0s}
+.zoom-rail{position:relative;flex:1;height:52px;min-width:0}
+.zoom-ticks{position:absolute;left:2px;right:2px;top:14px;height:20px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.38) 0 1px,transparent 1px 9px);mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.zoom-ticks:after{content:"";position:absolute;left:50%;top:-2px;width:2px;height:24px;border-radius:2px;background:#b9c7ff;transform:translateX(-50%);box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.zoom-scale-labels{position:absolute;left:5px;right:5px;bottom:1px;height:16px;font-size:9px;color:#c9c8c6;pointer-events:none}
+.zoom-scale-labels span{position:absolute;transform:translateX(-50%);white-space:nowrap}.zoom-scale-labels span:first-child{transform:none}.zoom-scale-labels span:last-child{transform:translateX(-100%)}
+.zoom-slider input[type=range]{position:absolute;left:0;right:0;top:5px;width:100%;height:34px;margin:0;background:transparent;accent-color:transparent;opacity:.001;cursor:ew-resize}
+.zoom-bubble{
+  position:absolute;left:18%;top:-29px;min-width:49px;height:35px;padding:0 11px;border-radius:18px;
+  display:grid;place-items:center;background:#d9e1ff;color:#273248;font-size:13px;font-weight:800;
+  transform:translateX(-50%) scale(.92);box-shadow:0 4px 15px rgba(0,0,0,.3);
+  transition:left .08s linear,transform .16s cubic-bezier(.2,1.5,.35,1);pointer-events:none;
+}
+.zoom-slider.show .zoom-bubble{transform:translateX(-50%) scale(1)}
+.zoom-bubble.bump{animation:zoomBubbleBump .20s cubic-bezier(.2,1.5,.35,1)}
+@keyframes zoomBubbleBump{0%{transform:translateX(-50%) scale(.92)}55%{transform:translateX(-50%) scale(1.09)}100%{transform:translateX(-50%) scale(1)}}
+
+/* Lens buttons retain the Pixel manual UW/W/T pill treatment. */
+.lens-preset{background:rgba(8,9,11,.70);border-radius:24px;padding:4px;gap:3px}
+.lensbtn{height:39px;border-radius:20px}
+
+@media(max-height:720px){.main{height:84px;flex-basis:84px}.modes{height:47px;flex-basis:47px}.lower{height:51px;flex-basis:51px;padding-bottom:2px}}
+
+
+/* ===== Aspect-ratio + compact bottom layout fix ===== */
+.vf{
+  right:auto !important;
+  bottom:auto !important;
+  transition:
+    width .28s cubic-bezier(.2,.8,.2,1),
+    height .28s cubic-bezier(.2,.8,.2,1),
+    left .28s cubic-bezier(.2,.8,.2,1),
+    border-radius .2s ease;
+  background:#000;
+}
+.scene{
+  width:100%;
+  height:100%;
+}
+.crop{display:none !important}
+
+/* The black control region starts exactly after the active preview. */
+.bottom{
+  height:auto !important;
+  min-height:218px;
+  display:grid !important;
+  grid-template-rows:56px minmax(96px,1fr) 60px;
+  align-content:stretch;
+  padding-bottom:max(9px,env(safe-area-inset-bottom));
+  transition:top .28s cubic-bezier(.2,.8,.2,1);
+}
+.modes{
+  order:unset !important;
+  height:56px !important;
+  min-height:56px;
+  padding:8px 0 6px !important;
+  align-self:start;
+}
+.main{
+  order:unset !important;
+  height:auto !important;
+  min-height:96px;
+  padding:0 34px !important;
+  align-self:stretch;
+}
+.lower{
+  order:unset !important;
+  height:60px !important;
+  min-height:60px;
+  padding:0 22px 7px !important;
+  align-self:end;
+}
+
+/* Keep floating controls fully inside the active preview. */
+.zoom-area{bottom:12px}
+.zoom-slider{bottom:9px}
+.mode-options{bottom:72px}
+.macro-badge{bottom:72px}
+.stabilize{bottom:72px}
+.quick-pop{bottom:72px}
+.panorama-ui{inset:74px 14px 72px}
+.navigator{top:66px}
+.recordbar{top:62px}
+
+/* Prevent overlays from visually spilling through rounded preview corners. */
+.topbar,.quick-zone,.quick-pop,.zoom-area,.zoom-slider,.macro-badge,.stabilize,
+.navigator,.recordbar,.panorama-ui,.mode-options,.mode-status{
+  max-width:calc(100% - 12px);
+}
+
+
+/* ===== top safe bar + non-overlapping camera stack ===== */
+.camera-safe-bar{
+  position:absolute;
+  z-index:120;
+  left:0;right:0;top:0;
+  height:30px;
+  background:#000;
+  pointer-events:none;
+}
+.phone{
+  background:#000 !important;
+}
+.vf{
+  border-radius:30px !important;
+  border:1px solid rgba(255,255,255,.055);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.72);
+}
+/* top controls are inset from the rounded preview corners */
+.topbar{
+  padding-top:16px !important;
+  padding-left:16px !important;
+  padding-right:16px !important;
+}
+.topbtn{height:36px !important}
+
+/* Bottom rows have dedicated slots: shutter can no longer cover Photo. */
+.bottom{
+  display:block !important;
+  overflow:hidden;
+  border-radius:30px 30px 0 0;
+  background:#000;
+}
+.main{
+  position:absolute !important;
+  left:0;right:0;
+  top:18px;
+  height:92px !important;
+  min-height:92px !important;
+  padding:0 36px !important;
+  z-index:4;
+}
+.modes{
+  position:absolute !important;
+  left:0;right:0;
+  top:116px;
+  height:52px !important;
+  min-height:52px !important;
+  padding:5px 0 6px !important;
+  z-index:3;
+}
+.lower{
+  position:absolute !important;
+  left:0;right:0;
+  top:178px;
+  height:58px !important;
+  min-height:58px !important;
+  padding:2px 22px 4px !important;
+  z-index:3;
+}
+.record-extra{top:43px !important;z-index:5}
+.shutter{position:relative;z-index:6}
+.mode{height:38px !important;line-height:38px}
+.mode.active{position:relative;z-index:1}
+
+/* Keep floating preview controls away from preview edges. */
+.zoom-area{bottom:14px !important}
+.zoom-slider{bottom:11px !important}
+.macro-badge,.stabilize{bottom:75px !important}
+.quick-pop{bottom:75px !important}
+.mode-options{bottom:75px !important}
+
+
+/* ===== Polished Pixel-feel pass ===== */
+.toast,.mode-status{display:none !important}
+.phone{background:linear-gradient(180deg,#040507 0%,#06080b 48%,#020304 100%) !important;}
+.camera-safe-bar{height:32px !important;background:linear-gradient(180deg,#040507 0%,#050608 100%) !important;}
+.vf{border-radius:32px !important;border:1px solid rgba(255,255,255,.05) !important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.78),inset 0 10px 30px rgba(0,0,0,.08),0 10px 34px rgba(0,0,0,.18) !important;}
+.topbar{padding:16px 14px 0 !important}.topgroup{gap:8px !important}
+.topbtn{height:38px !important;min-width:42px !important;border-radius:19px !important;background:rgba(20,22,25,.84) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 6px 18px rgba(0,0,0,.20);font-size:12px !important;font-weight:700 !important;letter-spacing:.01em;transition:transform .14s ease,background .18s ease,color .18s ease,box-shadow .18s ease;}
+.topbtn.circle{width:42px !important;min-width:42px !important;border-radius:21px !important}.topbtn.on{background:#dfe7fb !important;color:#15345f !important}
+.zoom-preset,.lens-preset,.segment,.zoom-slider,.quick-pop{box-shadow:0 10px 28px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.03);}
+.zoom-preset{gap:9px;padding:3px 8px !important;background:rgba(10,11,13,.80) !important;border-radius:28px !important;backdrop-filter:blur(10px);}
+.zbtn{width:48px !important;height:48px !important;border-radius:50% !important;border:1.5px solid rgba(255,255,255,.72) !important;background:rgba(0,0,0,.18) !important;font-size:13px !important;font-weight:700 !important;transition:transform .16s ease,background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease;box-shadow:0 1px 1px rgba(255,255,255,.03) inset;}
+.zbtn.active{background:#dfe5f8 !important;color:#17345e !important;border-color:transparent !important;box-shadow:0 4px 12px rgba(9,14,24,.16);}
+.lens-preset{background:rgba(10,11,13,.80) !important;padding:4px !important;border-radius:24px !important;}.lensbtn{min-width:60px !important;height:40px !important;border-radius:20px !important;transition:transform .16s ease,background .18s ease,color .18s ease,box-shadow .18s ease;}.lensbtn.active{background:#dfe5f8 !important;color:#17345e !important;box-shadow:0 4px 12px rgba(9,14,24,.16)}
+.main{padding:0 28px !important}
+.thumb,.switch,.round{border:1px solid rgba(255,255,255,.05);box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 12px 28px rgba(0,0,0,.18);transition:transform .14s ease,background .18s ease,box-shadow .18s ease;}
+.thumb,.switch{background:#2c2f34 !important}.round{background:#2b2e33 !important}
+.shutter{width:84px !important;height:84px !important;border:5px solid #000 !important;background:radial-gradient(circle at 50% 46%,#f7f7f7 0%,#ededed 66%,#dddddd 100%) !important;box-shadow:0 0 0 2px rgba(255,255,255,.14),0 8px 26px rgba(0,0,0,.28), inset 0 0 0 6px rgba(0,0,0,.05) !important;}
+.shutter.rec{width:60px !important;height:60px !important;border-radius:18px !important;border-color:#000 !important;background:#ef5361 !important;box-shadow:0 0 0 2px rgba(255,255,255,.10),0 8px 22px rgba(0,0,0,.28), inset 0 0 0 4px rgba(0,0,0,.05) !important;}
+.segment{height:52px !important;padding:4px !important;border-radius:26px !important;background:#2f3136 !important;}.segment button{width:72px !important;border-radius:22px !important;font-size:12px !important;font-weight:700 !important;letter-spacing:.01em;}.segment button.active{background:#96b6f8 !important;color:#15345f !important}
+.modes{padding:8px 14px 4px !important;gap:6px !important}.mode{font-size:13px !important;color:#d4d8de !important;padding:0 13px !important;height:34px !important;border-radius:17px !important;transition:transform .14s ease,background .18s ease,color .18s ease;}.mode.active{background:#dfe5f8 !important;color:#17345e !important;box-shadow:0 4px 12px rgba(9,14,24,.16);}
+.bottom{background:linear-gradient(180deg,#050608 0%,#030405 18%,#020304 100%) !important;}
+.quick-pop,.zoom-slider{background:rgba(19,20,23,.96) !important;border:1px solid rgba(255,255,255,.04);border-radius:28px !important;}
+.sheet,.full,.subpage{background:#111317 !important}.sheet{border-radius:30px 30px 0 0 !important;box-shadow:0 -22px 46px rgba(0,0,0,.34) !important;}
+.handle{width:42px !important;height:4px !important;background:#777c84 !important}.setting-row,.pref,.pro-control{border-bottom-color:#262a2f !important}
+.choices button,.more-row,.control-item,.topbtn,.card{transition:transform .14s ease,background .18s ease,color .18s ease,box-shadow .18s ease,border-color .18s ease;}
+.choices button.active,.control-item.selected{background:#dfe5f8 !important;color:#17345e !important}.choices button,.more-row,.control-item{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.topbtn:active,.zbtn:active,.lensbtn:active,.mode:active,.round:active,.switch:active,.thumb:active,.segment button:active,.choices button:active,.more-row:active,.control-item:active{transform:scale(.96)}
+
+</style>
+</head>
+<body>
+<div id="root">
+<div class="phone" id="phone">
+  <div class="camera-safe-bar" id="cameraSafeBar"></div>
+  <div class="vf" id="vf">
+    <div class="scene" id="scene"><div class="sun"></div><div class="mountains"></div><div class="tree l"></div><div class="tree r"></div><div class="person"><div class="head"></div><div class="body"></div></div></div>
+    <div class="crop" id="crop"></div><div class="grid g3 show" id="grid"></div>
+    <div class="level" id="level"><span></span><b>0°</b><span></span></div><div class="focus" id="focus"></div>
+
+    <div class="topbar">
+      <div class="topgroup"><button class="topbtn" id="rawTop">RAW</button><button class="topbtn" id="motionTop">Motion</button></div>
+      <div class="topgroup"><button class="topbtn circle" id="lightTop">⚡</button></div>
+    </div>
+    <div class="mode-status" id="modeStatus"></div><div class="lens-readout" id="lensReadout"><i></i><span>W • 1×</span></div>
+
+    <div class="quick-zone left" id="quickLeft"></div><div class="quick-zone right" id="quickRight"></div>
+    <div class="quick-pop" id="quickPop"><label id="quickLabel">Exposure</label><input id="quickRange" type="range" min="-100" max="100" value="0"><span class="value" id="quickValue">0.0</span></div>
+    <button class="macro-badge" id="macroBadge">✿</button>
+
+    <div class="zoom-area" id="zoomArea">
+      <div class="zoom-preset" id="zoomPreset"></div>
+      <div class="lens-preset" id="lensPreset"></div>
+    </div>
+    <div class="zoom-slider" id="zoomSlider" aria-hidden="true">
+      <div class="zoom-bubble" id="zoomBubble">1×</div>
+      <div class="zoom-rail">
+        <div class="zoom-ticks" aria-hidden="true"></div>
+        <div class="zoom-scale-labels" aria-hidden="true">
+          <span style="left:0%">.5</span><span style="left:18%">1</span><span style="left:36%">2</span><span style="left:56%">5</span><span style="left:72%">10</span><span style="left:88%">20</span><span style="left:100%">30</span>
+        </div>
+        <input id="zoomRange" type="range" min=".5" max="30" step=".1" value="1" aria-label="Zoom">
+      </div>
+    </div>
+    <button class="stabilize" id="stabilizeBtn">Stabilize</button><div class="navigator" id="navigator"></div>
+
+    <div class="recordbar" id="recordbar"><span class="dot"></span><span id="recordTime">00:00</span></div>
+    <div class="panorama-ui" id="panoUI"><div class="pano-line"></div><div class="pano-dot" id="panoDot"></div><div class="pano-arrow" id="panoArrow">→</div><div class="pano-hint" id="panoHint">Move slowly to the right</div></div>
+    <div class="mode-options" id="modeOptions"></div>
+  </div>
+
+  <div class="bottom">
+    <div class="main">
+      <button class="thumb" id="galleryBtn"></button><button class="shutter" id="shutter"></button><button class="switch" id="switchBtn" aria-label="Switch camera"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h2l1.5-2h3L15 7h2a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"/><path d="M8.5 13a3.7 3.7 0 0 1 6.4-2.4"/><path d="m15 8.5.1 3-3-.3"/></svg></button>
+    </div>
+    <div class="record-extra" id="recordExtra"><button id="pauseBtn">Ⅱ</button><button id="snapshotBtn">📷</button></div>
+    <div class="modes" id="modes"></div>
+    <div class="lower">
+      <button class="round" id="settingsBtn" aria-label="Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 .6l-.1.1H10l-.1-.1a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.1-.1V10l.1-.1a1.7 1.7 0 0 0 .6-1A1.7 1.7 0 0 0 4.3 7L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.1-.1H14l.1.1a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 .6 1l.1.1V14l-.1.1a1.7 1.7 0 0 0-.6.9Z"/></svg></button>
+      <div class="segment"><button class="active" id="photoSeg">PHOTO</button><button id="videoSeg">VIDEO</button></div>
+      <button class="round" id="controlsBtn" aria-label="Controls"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Ready</div><div class="flash" id="flash"></div>
+
+  <!-- PHOTO SETTINGS -->
+  <div class="sheet-bg" id="photoSettings">
+    <div class="sheet">
+      <div class="handle"></div><div class="sheet-title">Photo settings</div>
+      <div class="tabs"><button class="tab active" data-photo-tab="general">General</button><button class="tab" data-photo-tab="pro">Pro</button></div>
+
+      <div class="panel active" data-photo-panel="general">
+        <div class="setting-row"><div><b>More light</b><small>Flash behavior</small></div><div class="choices" id="lightChoice"><button data-v="Off">None</button><button class="active" data-v="Auto">Auto</button><button data-v="On">⚡</button></div></div>
+        <div class="setting-row"><div><b>Motion photo</b><small>Capture a short moment around each photo</small></div><div class="choices" id="motionChoice"><button class="active" data-v="Off">Off</button><button data-v="Auto">Auto</button><button data-v="On">On</button></div></div>
+        <div class="setting-row"><div><b>Timer</b><small>Delay before shutter</small></div><div class="choices" id="timerChoice"><button class="active" data-v="0">Off</button><button data-v="3">3s</button><button data-v="10">10s</button></div></div>
+        <div class="setting-row"><div><b>Macro Focus</b><small>Automatically use the ultrawide camera up close</small></div><div class="choices" id="macroChoice"><button class="active" data-v="Auto">Auto</button><button data-v="Off">Off</button></div></div>
+        <div class="setting-row"><div><b>Ratio</b><small>Photo frame</small></div><div class="choices" id="ratioChoice"><button class="active" data-v="4:3">4:3</button><button data-v="16:9">16:9</button></div></div>
+        <button class="more-row" id="moreSettingsBtn"><span>More settings</span><span>›</span></button>
+      </div>
+
+      <div class="panel" data-photo-panel="pro">
+        <div class="setting-row"><div><b>Resolution</b><small>High resolution applies to Photo and Portrait</small></div><div class="choices" id="resChoice"><button class="active" data-v="12 MP">12 MP</button><button data-v="50 MP">50 MP</button></div></div>
+        <div class="setting-row"><div><b>Lens selection</b><small>Automatic zoom controls or individual lenses</small></div><div class="choices" id="lensChoice"><button class="active" data-v="Auto">Auto</button><button data-v="Manual">Manual</button></div></div>
+        <div class="setting-row"><div><b>RAW + JPEG</b><small>Save both files for each photo</small></div><input class="switcher" id="rawSwitch" type="checkbox"></div>
+        <div class="pro-control"><div class="pro-head"><span>Focus</span><span id="focusVal">Auto</span></div><input id="focusRange" type="range" min="0" max="100" value="0"></div>
+        <div class="pro-control"><div class="pro-head"><span>Shutter speed</span><span id="shutterVal">Auto</span></div><input id="shutterRange" type="range" min="0" max="100" value="0"></div>
+        <div class="pro-control"><div class="pro-head"><span>ISO</span><span id="isoVal">Auto</span></div><input id="isoRange" type="range" min="0" max="100" value="0"></div>
+        <button class="more-row" id="resetPro"><span>Reset Pro controls</span><span>↺</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIDEO SETTINGS -->
+  <div class="sheet-bg" id="videoSettings">
+    <div class="sheet">
+      <div class="handle"></div><div class="sheet-title">Video settings</div>
+      <div class="setting-row"><div><b>Resolution</b><small>Video quality</small></div><div class="choices" id="videoResChoice"><button data-v="FHD">FHD</button><button class="active" data-v="4K">4K</button></div></div>
+      <div class="setting-row"><div><b>Frames/sec</b><small>Recording frame rate</small></div><div class="choices" id="fpsChoice"><button data-v="24">24</button><button class="active" data-v="30">30</button><button data-v="60">60</button></div></div>
+      <div class="setting-row"><div><b>10-bit HDR</b><small>Wider color and dynamic range</small></div><input class="switcher persist" data-key="hdrVideo" type="checkbox"></div>
+      <div class="setting-row"><div><b>Stabilization</b><small>Choose how strongly motion is stabilized</small></div><div class="choices" id="stabChoice"><button class="active" data-v="Standard">Standard</button><button data-v="Locked">Locked</button><button data-v="Active">Active</button></div></div>
+      <div class="setting-row"><div><b>Audio zoom</b><small>Boost sound from the zoomed target</small></div><input class="switcher persist" data-key="audioZoom" type="checkbox" checked></div>
+      <div class="setting-row"><div><b>Video format</b><small>Efficient H.265/HEVC or wider-compatible H.264/AVC</small></div><div class="choices" id="videoFormatChoice"><button class="active" data-v="H.265">H.265</button><button data-v="H.264">H.264</button></div></div>
+      <div class="setting-row"><div><b>Macro Focus video</b><small>Allow close-up video using the ultrawide lens</small></div><div class="choices" id="videoMacroChoice"><button class="active" data-v="Auto">Auto</button><button data-v="Off">Off</button></div></div>
+      <div class="setting-row"><div><b>Stereo audio</b><small>Record spatial stereo sound when available</small></div><input class="switcher persist" data-key="stereoAudio" type="checkbox" checked></div>
+      <div class="setting-row"><div><b>Wind noise reduction</b><small>Reduce steady wind noise during outdoor recording</small></div><input class="switcher persist" data-key="windReduction" type="checkbox" checked></div>
+      <button class="more-row" id="videoMoreBtn"><span>More settings</span><span>›</span></button>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="sheet-bg" id="controlsSheet">
+    <div class="sheet">
+      <div class="handle"></div><div class="sheet-title">Controls</div>
+      <div class="setting-row"><div><b>Exposure</b><small>Brightness compensation</small></div><button class="topbtn" id="openExposure">0.0</button></div>
+      <div class="setting-row"><div><b>White balance</b><small>Cooler or warmer color</small></div><button class="topbtn" id="openWB">Auto</button></div>
+      <div class="setting-row"><div><b>Focus</b><small>Auto or manual focus</small></div><button class="topbtn" id="openFocus">Auto</button></div>
+      <div class="setting-row"><div><b>Zoom</b><small>Open precision zoom slider</small></div><button class="topbtn" id="openZoom">1×</button></div>
+    </div>
+  </div>
+
+  <!-- MORE SETTINGS PAGE -->
+  <div class="full" id="morePage">
+    <div class="pagebar"><button class="back" data-close-full="morePage">‹</button><div class="pagetitle">Camera settings</div></div>
+    <div class="page">
+      <div class="storage-card"><b>Device storage</b><div class="storagebar"><span></span></div><small>91.4 GB free • about <span id="photoEstimate">19,400</span> photos or <span id="videoEstimate">9 h 35 min</span> of video</small></div>
+
+      <div class="section">General</div>
+      <div class="pref"><div><b>Save location</b><small>Save where photos and videos were captured</small></div><input class="switcher persist" data-key="location" type="checkbox"></div>
+      <div class="pref"><div><b>Camera sounds</b><small>Play sounds for shutter and recording</small></div><input class="switcher persist" data-key="sounds" type="checkbox" checked></div>
+      <div class="pref"><div><b>Save selfie as previewed</b><small>Save front camera photos with the same orientation as preview</small></div><input class="switcher persist" data-key="mirror" type="checkbox" checked></div>
+      <div class="pref"><div><b>Storage saver</b><small>Use efficient settings to save space</small></div><input class="switcher persist" data-key="storageSaver" type="checkbox"></div>
+
+      <div class="section">Camera behavior</div>
+      <div class="pref clickable" id="quickAccessRow"><div><b>Quick access controls</b><small>Choose up to four viewfinder controls</small></div><div class="value">›</div></div>
+      <div class="pref"><div><b>Launch mode</b><small>Mode used when Camera opens</small></div><div class="choices" id="launchChoice"><button class="active" data-v="Photo">Photo</button><button data-v="Video">Video</button></div></div>
+      <div class="pref"><div><b>Volume key action</b><small>Action for volume keys while Camera is open</small></div><div class="choices" id="volumeChoice"><button class="active" data-v="Shutter">Shutter</button><button data-v="Zoom">Zoom</button><button data-v="Volume">Volume</button></div></div>
+
+      <div class="section">Composition</div>
+      <div class="pref"><div><b>Framing hints</b><small>Show horizon and composition helpers</small></div><input class="switcher" id="framingSwitch" type="checkbox" checked></div>
+      <div class="pref"><div><b>Grid type</b><small>Overlay a composition grid</small></div><div class="choices" id="gridChoice"><button data-v="Off">Off</button><button class="active" data-v="3×3">3×3</button><button data-v="4×4">4×4</button><button data-v="Golden">Golden</button></div></div>
+
+      <div class="section">Advanced</div>
+      <div class="pref"><div><b>Dirty lens warning</b><small>Show a reminder when the lens may need cleaning</small></div><input class="switcher persist" data-key="dirtyLens" type="checkbox" checked></div>
+      <div class="pref"><div><b>RAW/JPEG control</b><small>Show RAW control in Photo settings</small></div><input class="switcher persist" data-key="rawControl" type="checkbox" checked></div>
+      <div class="pref"><div><b>Manual lens selection</b><small>Keep the selected lens instead of switching automatically</small></div><input class="switcher" id="manualLensSwitch" type="checkbox"></div>
+      <div class="pref"><div><b>Store videos efficiently</b><small>Use H.265/HEVC for smaller video files</small></div><input class="switcher persist" data-key="efficientVideo" type="checkbox" checked></div>
+      <div class="pref"><div><b>Underwater photography & video</b><small>Apply underwater white-balance behavior when using a waterproof case</small></div><input class="switcher persist" data-key="underwater" type="checkbox"></div>
+      <div class="pref"><div><b>Remember camera settings</b><small>Keep manual controls, lens selection and capture preferences between sessions</small></div><input class="switcher persist" data-key="rememberSettings" type="checkbox" checked></div>
+    </div>
+  </div>
+
+  <!-- QUICK ACCESS SUBPAGE -->
+  <div class="subpage" id="quickPage">
+    <div class="pagebar"><button class="back" data-close-sub="quickPage">‹</button><div class="pagetitle">Quick access controls</div></div>
+    <div class="page">
+      <div class="pref"><div><b>Quick access controls</b><small>Show controls when you tap the viewfinder</small></div><input class="switcher" id="quickEnable" type="checkbox" checked></div>
+      <div class="qa-preview" id="qaPreview"><div class="slot s1" data-slot="0"></div><div class="slot s2" data-slot="1"></div><div class="slot s3" data-slot="2"></div><div class="slot s4" data-slot="3"></div></div>
+      <div class="section">Choose controls</div><div class="subtle-note">Tap a preview slot, then choose a control below. On desktop you can also drag the live viewfinder controls to swap their positions.</div>
+      <div class="control-list" id="controlList"></div>
+      <small style="display:block;color:#aeb3ba;margin-top:12px;line-height:1.45">Select a slot in the preview, then choose a control. The first two slots appear on the left of the viewfinder and the last two on the right.</small>
+    </div>
+  </div>
+
+  <!-- GALLERY -->
+  <div class="full" id="galleryPage">
+    <div class="pagebar"><button class="back" data-close-full="galleryPage">‹</button><div class="pagetitle">Photos</div></div>
+    <div class="page"><div class="gallery" id="gallery"><div class="empty">Captured demo photos appear here.</div></div></div>
+  </div>
+<div class="gesture-pill"></div>
+</div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id), $$=q=>[...document.querySelectorAll(q)];
+const defaults={
+ group:'photo',mode:'Photo',zoom:1,lensSelection:'Auto',lens:'W',resolution:'12 MP',raw:false,
+ light:'Auto',motion:'Off',timer:0,macro:'Auto',ratio:'4:3',framing:true,grid:'3×3',
+ exp:0,wb:0,focus:0,shutter:0,iso:0,front:false,stabilized:false,
+ videoRes:'4K',fps:'30',stab:'Standard',videoFormat:'H.265',videoMacro:'Auto',slow:'1/4×',timelapse:'Auto',
+ launch:'Photo',volume:'Shutter',quickEnabled:true,quickSlots:['Exposure','White balance','Macro Focus','Timer'],
+ recording:false,paused:false,recordSeconds:0,panoDirection:'Right',shots:[]
+};
+let stored={};try{stored=JSON.parse(localStorage.getItem('pixel11-detailed-ui')||'{}')}catch(e){}
+const S={...defaults,...(stored.state||{}),shots:[]};
+const persisted=stored.toggles||{};
+let selectedSlot=0, quickType='Exposure', recordTimer=null, panoTimer=null, panoProgress=0;
+const scene=$('scene'),vf=$('vf'),toastEl=$('toast');
+
+function save(){
+ const state={...S,shots:[],recording:false,paused:false,recordSeconds:0};
+ const toggles={};$$('.persist').forEach(x=>toggles[x.dataset.key]=x.checked);
+ try{
+   window.localStorage.setItem('pixel11-detailed-ui',JSON.stringify({state,toggles}));
+ }catch(e){
+   // Some browsers block localStorage for directly opened local files.
+   // The UI must continue working without persistence.
+ }
+}
+function toast(t,ms=1100){}
+function closeSheets(){$$('.sheet-bg').forEach(x=>x.classList.remove('show'))}
+$$('.sheet-bg').forEach(x=>x.addEventListener('pointerdown',e=>{if(e.target===x)e.currentTarget.classList.remove('show')}));
+$$('.persist').forEach(x=>{if(x.dataset.key in persisted)x.checked=!!persisted[x.dataset.key];x.addEventListener('change',()=>{updateStorage();save()})});
+
+function centerActiveMode(animate=false){
+ const rail=$('modes'),active=rail?.querySelector('.mode.active');if(!rail||!active)return;
+ requestAnimationFrame(()=>{const left=active.offsetLeft+active.offsetWidth/2-rail.clientWidth/2;rail.scrollTo({left:Math.max(0,left),behavior:animate?'smooth':'auto'})});
+}
+function renderModes(){
+ const el=$('modes');
+ if(S.group==='photo'){
+   el.innerHTML=['Portrait','Photo','Night Sight','Panorama','Action Pan','Long Exposure'].map(m=>`<button class="mode ${m===S.mode?'active':''}" data-m="${m}">${m}</button>`).join('');
+ }else{
+   el.innerHTML=['Video','Slow Motion','Time Lapse','Cinematic Pan'].map(m=>`<button class="mode ${m===S.mode?'active':''}" data-m="${m}">${m}</button>`).join('');
+ }
+ centerActiveMode(false);
+}
+function setGroup(g){
+ if(S.recording)stopRecording();
+ S.group=g;S.mode=g==='photo'?'Photo':'Video';
+ $('photoSeg').classList.toggle('active',g==='photo');$('videoSeg').classList.toggle('active',g==='video');
+ $('rawTop').style.display=g==='photo'?'block':'none';$('motionTop').style.display=g==='photo'?'block':'none';
+ renderModes();renderModeOptions();renderZoomButtons();applyZoom(S.zoom,true);toast(g==='photo'?'Photo':'Video');save()
+}
+$('photoSeg').onclick=()=>setGroup('photo');$('videoSeg').onclick=()=>setGroup('video');
+$('modes').onclick=e=>{
+ const b=e.target.closest('.mode');if(!b)return;S.mode=b.dataset.m;$$('#modes .mode').forEach(x=>x.classList.toggle('active',x===b));
+ $('panoUI').classList.toggle('show',S.mode==='Panorama');
+ scene.style.filter=S.mode==='Night Sight'?'brightness(1.13) saturate(.86)':S.mode==='Portrait'?'contrast(1.05) saturate(1.05)':'';
+ renderModeOptions();toast(S.mode);save()
+};
+
+function renderModeOptions(){
+ const el=$('modeOptions');el.classList.remove('show');el.innerHTML='';
+ if(S.mode==='Slow Motion'){
+   el.innerHTML=['1/4×','1/8×'].map(x=>`<button class="${S.slow===x?'active':''}" data-v="${x}">${x}</button>`).join('');el.classList.add('show');
+ }else if(S.mode==='Time Lapse'){
+   el.innerHTML=['Auto','5×','10×','30×','120×'].map(x=>`<button class="${S.timelapse===x?'active':''}" data-v="${x}">${x}</button>`).join('');el.classList.add('show');
+ }else if(S.mode==='Panorama'){
+   el.innerHTML=['Left','Right','Up'].map(x=>`<button class="${S.panoDirection===x?'active':''}" data-v="${x}">${x}</button>`).join('');el.classList.add('show');updatePanoDirection();
+ }
+}
+$('modeOptions').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#modeOptions button').forEach(x=>x.classList.toggle('active',x===b));if(S.mode==='Slow Motion')S.slow=b.dataset.v;if(S.mode==='Time Lapse')S.timelapse=b.dataset.v;if(S.mode==='Panorama'){S.panoDirection=b.dataset.v;updatePanoDirection()}toast(b.dataset.v);save()};
+function updatePanoDirection(){
+ const d=S.panoDirection;$('panoArrow').textContent=d==='Left'?'←':d==='Up'?'↑':'→';$('panoHint').textContent=d==='Left'?'Move slowly to the left':d==='Up'?'Move slowly upward':'Move slowly to the right'
+}
+
+function maxZoom(){return S.group==='video'?20:30}
+function opticalPresets(){return S.group==='video'?[.5,1,2,5]:[.5,1,2,5,10]}
+function zoomText(z){return (z<10?z.toFixed(z%1?1:0):z.toFixed(0))+'×'}
+function inferredLens(z){if(S.lensSelection==='Manual')return S.lens;return z<.85?'UW':z>=4.25?'T':'W'}
+function showLensReadout(){const r=$('lensReadout');if(!r)return;r.querySelector('span').textContent=inferredLens(S.zoom)+' • '+zoomText(S.zoom);r.classList.add('show');clearTimeout(showLensReadout.t);showLensReadout.t=setTimeout(()=>r.classList.remove('show'),900)}
+function applyZoom(z,quiet=false){
+ S.zoom=Math.max(.5,Math.min(maxZoom(),+z));$('zoomRange').max=maxZoom();$('zoomRange').value=S.zoom;updateZoomBubble();
+ const scale=S.zoom<=1?1:1+Math.min(.58,Math.log10(S.zoom)*.29);scene.style.transform=`scale(${scale})`;
+ $('openZoom').textContent=zoomText(S.zoom);$('stabilizeBtn').classList.toggle('show',S.zoom>=15);showLensReadout();
+ if(S.zoom<15){S.stabilized=false;$('stabilizeBtn').classList.remove('on');$('navigator').classList.remove('show')}
+ renderZoomButtons();if(!quiet)toast(zoomText(S.zoom),600);save()
+}
+function renderZoomButtons(){
+ const zp=$('zoomPreset'),lp=$('lensPreset');
+ if(S.lensSelection==='Auto'){
+   zp.classList.remove('hide');lp.classList.remove('show');
+   zp.innerHTML=opticalPresets().map(z=>`<button class="zbtn ${Math.abs(z-S.zoom)<.01?'active':''}" data-z="${z}">${z===.5?'.5':z===1?'1x':z}</button>`).join('')
+ }else{
+   zp.classList.add('hide');lp.classList.add('show');
+   const lens=[['UW',.5],['W',1],['T',5]];lp.innerHTML=lens.map(([n,z])=>`<button class="lensbtn ${S.lens===n?'active':''}" data-l="${n}" data-z="${z}">${n}<small style="display:block;font-size:8px;font-weight:500">${z}×</small></button>`).join('')
+ }
+}
+function updateZoomBubble(){
+ const bubble=$('zoomBubble');if(!bubble)return;const lo=Math.log(.5),hi=Math.log(maxZoom()),p=Math.max(0,Math.min(1,(Math.log(S.zoom)-lo)/(hi-lo)));
+ bubble.textContent=zoomText(S.zoom);bubble.style.left=(5+p*90)+'%';
+}
+function pulseZoomPreset(btn){btn.classList.remove('preset-pulse');void btn.offsetWidth;btn.classList.add('preset-pulse');setTimeout(()=>btn.classList.remove('preset-pulse'),380)}
+$('zoomPreset').onclick=e=>{const b=e.target.closest('.zbtn');if(b){pulseZoomPreset(b);applyZoom(+b.dataset.z)}};
+let zoomCollapseTimer=null;
+function scheduleZoomCollapse(delay=1700){clearTimeout(zoomCollapseTimer);zoomCollapseTimer=setTimeout(hideZoomSlider,delay)}
+function showZoomSlider(originClientX=null){
+ const slider=$('zoomSlider'),area=$('zoomArea');clearTimeout(zoomCollapseTimer);
+ if(originClientX!=null){const r=vf.getBoundingClientRect(),p=Math.max(0,Math.min(1,(originClientX-r.left)/r.width));slider.style.setProperty('--zoom-origin',(p*100)+'%')}
+ updateZoomBubble();slider.classList.add('show');slider.setAttribute('aria-hidden','false');area.classList.add('linger-hidden');scheduleZoomCollapse();
+}
+function hideZoomSlider(){clearTimeout(zoomCollapseTimer);$('zoomSlider').classList.remove('show');$('zoomSlider').setAttribute('aria-hidden','true');$('zoomArea').classList.remove('linger-hidden')}
+function bumpZoomBubble(){const b=$('zoomBubble');if(!b)return;b.classList.remove('bump');void b.offsetWidth;b.classList.add('bump');setTimeout(()=>b.classList.remove('bump'),220)}
+let lensHold=null;
+$('lensPreset').addEventListener('pointerdown',e=>{const b=e.target.closest('.lensbtn');if(!b)return;clearTimeout(lensHold);lensHold=setTimeout(()=>{S.lens=b.dataset.l;applyZoom(+b.dataset.z,true);showZoomSlider(e.clientX);bumpZoomBubble();toast(b.dataset.l+' lens')},420)});
+$('lensPreset').addEventListener('pointerup',e=>{clearTimeout(lensHold);const b=e.target.closest('.lensbtn');if(b){S.lens=b.dataset.l;applyZoom(+b.dataset.z);save()}});
+$('zoomRange').addEventListener('pointerdown',()=>clearTimeout(zoomCollapseTimer));
+$('zoomRange').addEventListener('pointerup',()=>scheduleZoomCollapse(1550));
+$('zoomRange').oninput=e=>{applyZoom(+e.target.value,true);updateZoomBubble();showZoomSlider();scheduleZoomCollapse(1550)};
+let zoomSwipe=null;
+$('zoomArea').addEventListener('pointerdown',e=>{zoomSwipe={x:e.clientX};});
+$('zoomArea').addEventListener('pointermove',e=>{if(!zoomSwipe||Math.abs(e.clientX-zoomSwipe.x)<16)return;showZoomSlider(e.clientX);const r=$('zoomArea').getBoundingClientRect(),p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));const lo=Math.log(.5),hi=Math.log(maxZoom());applyZoom(Math.exp(lo+p*(hi-lo)),true);zoomSwipe.x=e.clientX});
+$('zoomArea').addEventListener('pointerup',()=>zoomSwipe=null);
+const pointers=new Map();let pinch=null;
+vf.addEventListener('pointerdown',e=>{if(e.target.closest('button,input,.quick-zone,.quick-pop,.mode-options'))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});vf.setPointerCapture?.(e.pointerId);if(pointers.size===2){const a=[...pointers.values()];pinch={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),z:S.zoom};showZoomSlider((a[0].x+a[1].x)/2)}});
+vf.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinch){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);applyZoom(pinch.z*d/pinch.d,true);showZoomSlider((a[0].x+a[1].x)/2)}});
+function endPointer(e){pointers.delete(e.pointerId);if(pointers.size<2)pinch=null}
+vf.addEventListener('pointerup',endPointer);vf.addEventListener('pointercancel',endPointer);
+vf.addEventListener('wheel',e=>{e.preventDefault();showZoomSlider(e.clientX);applyZoom(S.zoom*(e.deltaY<0?1.12:.89),true)},{passive:false});
+vf.addEventListener('dblclick',e=>{if(e.target.closest('button,input'))return;applyZoom(S.zoom<1.5?2:1)});
+
+$('stabilizeBtn').onclick=()=>{S.stabilized=!S.stabilized;$('stabilizeBtn').classList.toggle('on',S.stabilized);$('navigator').classList.toggle('show',S.stabilized);toast(S.stabilized?'Zoom stabilization on':'Zoom stabilization off');save()};
+
+
+function applyAspectLayout(){
+  const phone = $('phone');
+  const bottom = document.querySelector('.bottom');
+  if(!phone || !vf || !bottom) return;
+
+  const pw = phone.clientWidth;
+  const ph = phone.clientHeight;
+  if(!pw || !ph) return;
+
+  const safeBarH = 30;
+  const topGap = 7;
+  const top = safeBarH + topGap;
+  const gap = 8;
+  const side = 6;
+  const bottomMinimum = 244;
+
+  /* In portrait UI, 4:3 imagery is 3:4 and 16:9 imagery is 9:16. */
+  const activeRatio = S.ratio === '16:9' ? (9/16) : (3/4);
+  const maxW = Math.max(1, pw - side * 2);
+  const maxH = Math.max(1, ph - top - gap - bottomMinimum);
+
+  let w = maxW;
+  let h = w / activeRatio;
+
+  if(h > maxH){
+    h = maxH;
+    w = h * activeRatio;
+  }
+
+  const left = (pw - w) / 2;
+
+  vf.style.left = left.toFixed(2) + 'px';
+  vf.style.top = top + 'px';
+  vf.style.width = w.toFixed(2) + 'px';
+  vf.style.height = h.toFixed(2) + 'px';
+
+  bottom.style.top = (top + h + gap).toFixed(2) + 'px';
+  bottom.style.minHeight = '244px';
+  bottom.style.bottom = '0';
+  bottom.style.height = 'auto';
+
+  $('crop').classList.remove('wide');
+
+  /* Re-center the selected mode after layout width changes. */
+  requestAnimationFrame(()=>centerActiveMode(false));
+}
+
+function updateSettingsUI(){
+ choice('lightChoice',S.light);choice('motionChoice',S.motion);choice('timerChoice',String(S.timer));choice('macroChoice',S.macro);choice('ratioChoice',S.ratio);
+ choice('resChoice',S.resolution);choice('lensChoice',S.lensSelection);$('rawSwitch').checked=S.raw;
+ $('rawTop').classList.toggle('on',S.raw);$('motionTop').classList.toggle('on',S.motion!=='Off');$('lightTop').classList.toggle('on',S.light!=='Off');
+ applyAspectLayout();$('macroBadge').classList.toggle('show',S.macro!=='Off');$('macroBadge').classList.toggle('on',S.macro==='On');
+ $('manualLensSwitch').checked=S.lensSelection==='Manual';$('framingSwitch').checked=S.framing;updateGrid();
+ choice('videoResChoice',S.videoRes);choice('fpsChoice',S.fps);choice('stabChoice',S.stab);choice('videoFormatChoice',S.videoFormat);choice('videoMacroChoice',S.videoMacro);choice('launchChoice',S.launch);choice('volumeChoice',S.volume);choice('gridChoice',S.grid);
+ renderZoomButtons();renderQuick();updateStorage()
+}
+function choice(id,val){$$('#'+id+' button').forEach(b=>b.classList.toggle('active',b.dataset.v===String(val)))}
+function bindChoice(id,key,fn){
+ $(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;S[key]=b.dataset.v;choice(id,S[key]);if(fn)fn();toast(S[key]);save()}
+}
+bindChoice('lightChoice','light',()=>{$('lightTop').classList.toggle('on',S.light!=='Off')});
+bindChoice('motionChoice','motion',()=>{$('motionTop').classList.toggle('on',S.motion!=='Off')});
+$('timerChoice').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.timer=+b.dataset.v;choice('timerChoice',S.timer);toast(S.timer?S.timer+' sec':'Timer off');save()};
+bindChoice('macroChoice','macro',()=>{$('macroBadge').classList.toggle('show',S.macro!=='Off')});
+bindChoice('ratioChoice','ratio',()=>{applyAspectLayout()});
+bindChoice('resChoice','resolution');
+bindChoice('lensChoice','lensSelection',()=>{renderZoomButtons();$('manualLensSwitch').checked=S.lensSelection==='Manual'});
+$('rawSwitch').onchange=e=>{S.raw=e.target.checked;$('rawTop').classList.toggle('on',S.raw);toast(S.raw?'RAW + JPEG':'JPEG only');save()};
+$('rawTop').onclick=()=>{S.raw=!S.raw;updateSettingsUI();toast(S.raw?'RAW + JPEG':'JPEG only');save()};
+$('motionTop').onclick=()=>{const a=['Off','Auto','On'];S.motion=a[(a.indexOf(S.motion)+1)%a.length];updateSettingsUI();toast('Motion photo: '+S.motion);save()};
+$('lightTop').onclick=()=>{const a=['Off','Auto','On'];S.light=a[(a.indexOf(S.light)+1)%a.length];updateSettingsUI();toast('More light: '+S.light);save()};
+$('macroBadge').onclick=()=>{S.macro=S.macro==='On'?'Auto':'On';updateSettingsUI();toast('Macro Focus: '+S.macro);save()};
+
+$$('[data-photo-tab]').forEach(b=>b.onclick=()=>{$$('[data-photo-tab]').forEach(x=>x.classList.toggle('active',x===b));$$('[data-photo-panel]').forEach(p=>p.classList.toggle('active',p.dataset.photoPanel===b.dataset.photoTab))});
+$('settingsBtn').onclick=()=>{(S.group==='photo'?$('photoSettings'):$('videoSettings')).classList.add('show')};
+$('controlsBtn').onclick=()=>$('controlsSheet').classList.add('show');
+
+const focusLabels=['Auto','Near','0.5 m','1 m','2 m','5 m','∞'];
+$('focusRange').oninput=e=>{S.focus=+e.target.value;const i=Math.min(focusLabels.length-1,Math.floor(S.focus/16.7));$('focusVal').textContent=S.focus===0?'Auto':focusLabels[i];$('openFocus').textContent=$('focusVal').textContent;save()};
+const shutterSpeeds=['Auto','1/8000','1/4000','1/1000','1/250','1/60','1/15','1/4','1s','4s'];
+$('shutterRange').oninput=e=>{S.shutter=+e.target.value;$('shutterVal').textContent=shutterSpeeds[Math.min(shutterSpeeds.length-1,Math.floor(S.shutter/11.2))];save()};
+const isoVals=['Auto','50','100','200','400','800','1600','3200'];
+$('isoRange').oninput=e=>{S.iso=+e.target.value;$('isoVal').textContent=isoVals[Math.min(isoVals.length-1,Math.floor(S.iso/14.3))];save()};
+$('resetPro').onclick=()=>{S.focus=S.shutter=S.iso=0;$('focusRange').value=$('shutterRange').value=$('isoRange').value=0;$('focusVal').textContent=$('shutterVal').textContent=$('isoVal').textContent='Auto';$('openFocus').textContent='Auto';toast('Pro controls reset');save()};
+
+bindChoice('videoResChoice','videoRes',updateStorage);bindChoice('fpsChoice','fps');bindChoice('stabChoice','stab');bindChoice('videoFormatChoice','videoFormat');bindChoice('videoMacroChoice','videoMacro');
+bindChoice('launchChoice','launch');bindChoice('volumeChoice','volume');
+$('framingSwitch').onchange=e=>{S.framing=e.target.checked;updateGrid();save()};
+$('gridChoice').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.grid=b.dataset.v;choice('gridChoice',S.grid);updateGrid();toast('Grid: '+S.grid);save()};
+$('manualLensSwitch').onchange=e=>{S.lensSelection=e.target.checked?'Manual':'Auto';choice('lensChoice',S.lensSelection);renderZoomButtons();save()};
+function updateGrid(){const g=$('grid');g.className='grid';if(S.framing&&S.grid!=='Off'){g.classList.add('show',S.grid==='3×3'?'g3':S.grid==='4×4'?'g4':'golden')}$('level').classList.toggle('hide',!S.framing)}
+
+$('moreSettingsBtn').onclick=()=>{closeSheets();$('morePage').classList.add('show')};$('videoMoreBtn').onclick=()=>{closeSheets();$('morePage').classList.add('show')};
+$$('[data-close-full]').forEach(b=>b.onclick=()=>$((b.dataset.closeFull)).classList.remove('show'));
+$$('[data-close-sub]').forEach(b=>b.onclick=()=>$((b.dataset.closeSub)).classList.remove('show'));
+
+$('openExposure').onclick=()=>openQuick('Exposure');$('openWB').onclick=()=>openQuick('White balance');$('openFocus').onclick=()=>{closeSheets();$('photoSettings').classList.add('show');$$('[data-photo-tab]').forEach(x=>x.classList.toggle('active',x.dataset.photoTab==='pro'));$$('[data-photo-panel]').forEach(x=>x.classList.toggle('active',x.dataset.photoPanel==='pro'))};
+$('openZoom').onclick=()=>{closeSheets();showZoomSlider(vf.getBoundingClientRect().left+vf.clientWidth/2)};
+
+function renderQuick(){
+ const left=$('quickLeft'),right=$('quickRight');left.innerHTML=right.innerHTML='';
+ if(!S.quickEnabled){left.classList.remove('visible');right.classList.remove('visible');return}
+ S.quickSlots.forEach((name,i)=>{if(!name)return;const b=document.createElement('button');b.className='qbtn';b.dataset.control=name;b.dataset.slot=i;b.innerHTML=quickIcon(name);b.title=name;b.draggable=true;b.onclick=e=>{e.stopPropagation();activateQuick(name,b)};b.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',String(i));e.dataTransfer.effectAllowed='move'});b.addEventListener('dragover',e=>e.preventDefault());b.addEventListener('drop',e=>{e.preventDefault();const from=+e.dataTransfer.getData('text/plain'),to=+b.dataset.slot;if(Number.isFinite(from)&&from!==to){[S.quickSlots[from],S.quickSlots[to]]=[S.quickSlots[to],S.quickSlots[from]];renderQuick();renderQuickPage();save();toast('Quick controls reordered')}});(i<2?left:right).appendChild(b)});
+}
+function quickIcon(n){return {'Exposure':'☀','White balance':'◐','Macro Focus':'✿','Timer':'◴','More light':'⚡','Motion photo':'◉','Ratio':'4:3','Grid':'#','Focus':'AF'}[n]||n.slice(0,2)}
+function showQuickZones(){$('quickLeft').classList.toggle('visible',S.quickEnabled);$('quickRight').classList.toggle('visible',S.quickEnabled);clearTimeout(showQuickZones.t);showQuickZones.t=setTimeout(()=>{$('quickLeft').classList.remove('visible');$('quickRight').classList.remove('visible')},4500)}
+function activateQuick(name,b){
+ $$('.qbtn').forEach(x=>x.classList.remove('active'));b?.classList.add('active');
+ if(name==='Exposure'||name==='White balance'||name==='Focus'){openQuick(name);return}
+ if(name==='Macro Focus'){$('macroBadge').click();return}
+ if(name==='Timer'){S.timer=S.timer===0?3:S.timer===3?10:0;updateSettingsUI();toast(S.timer?S.timer+' sec':'Timer off');save();return}
+ if(name==='More light'){$('lightTop').click();return}
+ if(name==='Motion photo'){$('motionTop').click();return}
+ if(name==='Ratio'){S.ratio=S.ratio==='4:3'?'16:9':'4:3';updateSettingsUI();applyAspectLayout();toast(S.ratio);save();return}
+ if(name==='Grid'){const a=['Off','3×3','4×4','Golden'];S.grid=a[(a.indexOf(S.grid)+1)%a.length];updateSettingsUI();toast(S.grid);save()}
+}
+function openQuick(type){
+ closeSheets();quickType=type;$('quickLabel').textContent=type;const r=$('quickRange');
+ if(type==='Exposure'){r.min=-100;r.max=100;r.value=S.exp;$('quickValue').textContent=(S.exp/50).toFixed(1)}
+ if(type==='White balance'){r.min=-100;r.max=100;r.value=S.wb;$('quickValue').textContent=S.wb===0?'Auto':S.wb}
+ if(type==='Focus'){r.min=0;r.max=100;r.value=S.focus;$('quickValue').textContent=S.focus===0?'Auto':S.focus}
+ $('quickPop').classList.add('show');toast(type)
+}
+$('quickRange').oninput=e=>{
+ const v=+e.target.value;
+ if(quickType==='Exposure'){S.exp=v;$('quickValue').textContent=(v/50).toFixed(1);$('openExposure').textContent=(v/50).toFixed(1);scene.style.filter=`brightness(${1+v/500})`}
+ if(quickType==='White balance'){S.wb=v;$('quickValue').textContent=v===0?'Auto':v;scene.style.filter=`sepia(${Math.max(0,v)/450}) saturate(${1+Math.abs(v)/500})`;$('openWB').textContent=v===0?'Auto':v<0?'Cool':'Warm'}
+ if(quickType==='Focus'){S.focus=v;$('quickValue').textContent=v===0?'Auto':v;$('focusRange').value=v;$('focusVal').textContent=v===0?'Auto':'Manual';$('openFocus').textContent=v===0?'Auto':'Manual'}
+ save()
+};
+
+$('quickAccessRow').onclick=()=>{selectedSlot=0;renderQuickPage();$('quickPage').classList.add('show')};
+$('quickEnable').onchange=e=>{S.quickEnabled=e.target.checked;renderQuick();save()};
+const controls=['Exposure','White balance','Focus','Macro Focus','Timer','More light','Motion photo','Ratio','Grid'];
+function renderQuickPage(){
+ $('quickEnable').checked=S.quickEnabled;
+ $$('#qaPreview .slot').forEach((s,i)=>{s.textContent=S.quickSlots[i]||'Empty';s.style.outline=i===selectedSlot?'2px solid #a8c7fa':'none';s.onclick=()=>{selectedSlot=i;renderQuickPage()}});
+ $('controlList').innerHTML=controls.map(n=>`<button class="control-item ${S.quickSlots.includes(n)?'selected':''}" data-c="${n}"><b>${n}</b><small>${quickIcon(n)} quick control</small></button>`).join('');
+}
+$('controlList').onclick=e=>{const b=e.target.closest('.control-item');if(!b)return;const name=b.dataset.c;const old=S.quickSlots.indexOf(name);if(old>=0&&old!==selectedSlot)S.quickSlots[old]='';S.quickSlots[selectedSlot]=name;renderQuickPage();renderQuick();save()};
+$('qaPreview').addEventListener('dblclick',e=>{const s=e.target.closest('.slot');if(!s)return;S.quickSlots[+s.dataset.slot]='';renderQuickPage();renderQuick();save()});
+
+vf.addEventListener('click',e=>{
+ if(e.target.closest('button,input,.quick-pop,.mode-options')||pointers.size>1)return;
+ showQuickZones();const r=vf.getBoundingClientRect();$('focus').style.left=(e.clientX-r.left)+'px';$('focus').style.top=(e.clientY-r.top)+'px';$('focus').classList.remove('go');void $('focus').offsetWidth;$('focus').classList.add('go');toast('Focus')
+});
+let focusHold=null;
+vf.addEventListener('pointerdown',e=>{if(e.target.closest('button,input'))return;clearTimeout(focusHold);focusHold=setTimeout(()=>{$('focus').classList.add('lock');toast('AE/AF locked',1500)},700)});
+vf.addEventListener('pointerup',()=>clearTimeout(focusHold));
+vf.addEventListener('pointercancel',()=>clearTimeout(focusHold));
+
+$('switchBtn').onclick=()=>{S.front=!S.front;scene.style.filter=S.front?'brightness(1.06) saturate(.94)':'';toast(S.front?'Front camera':'Rear camera');save()};
+
+function startRecording(){
+ S.recording=true;S.paused=false;S.recordSeconds=0;$('shutter').classList.add('rec');$('recordbar').classList.add('show');$('recordExtra').classList.add('show');tickRecord();recordTimer=setInterval(()=>{if(!S.paused){S.recordSeconds++;tickRecord()}},1000);toast('Recording')
+}
+function stopRecording(){S.recording=false;clearInterval(recordTimer);recordTimer=null;$('shutter').classList.remove('rec');$('recordbar').classList.remove('show');$('recordExtra').classList.remove('show');toast('Video saved')}
+function tickRecord(){const m=Math.floor(S.recordSeconds/60).toString().padStart(2,'0'),s=(S.recordSeconds%60).toString().padStart(2,'0');$('recordTime').textContent=m+':'+s}
+$('pauseBtn').onclick=()=>{S.paused=!S.paused;$('pauseBtn').textContent=S.paused?'▶':'Ⅱ';toast(S.paused?'Paused':'Recording')};
+$('snapshotBtn').onclick=()=>{capture(true);toast('Video frame saved')};
+
+$('shutter').onclick=()=>{
+ if(S.mode==='Panorama'){togglePanorama();return}
+ if(S.group==='video'){S.recording?stopRecording():startRecording();return}
+ if(S.timer){let n=S.timer;toast(String(n),900);const id=setInterval(()=>{n--;if(n>0)toast(String(n),850);else{clearInterval(id);capture(false)}},1000)}else capture(false)
+};
+function capture(videoFrame=false){
+ const c=document.createElement('canvas');c.width=1200;c.height=S.ratio==='16:9'?675:900;const x=c.getContext('2d');
+ let g=x.createLinearGradient(0,0,0,c.height);g.addColorStop(0,'#587287');g.addColorStop(.48,'#9ca9af');g.addColorStop(.49,'#4b5651');g.addColorStop(1,'#202522');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);
+ x.fillStyle='#28302c';x.beginPath();x.moveTo(0,c.height*.72);x.lineTo(c.width*.28,c.height*.48);x.lineTo(c.width*.46,c.height*.73);x.lineTo(c.width*.74,c.height*.50);x.lineTo(c.width,c.height*.72);x.lineTo(c.width,c.height);x.lineTo(0,c.height);x.fill();
+ x.fillStyle='#d3ae92';x.beginPath();x.arc(c.width*.5,c.height*.54,52,0,Math.PI*2);x.fill();x.fillStyle='#41552e';x.fillRect(c.width*.445,c.height*.59,132,190);
+ x.fillStyle='#fff';x.font='700 24px Arial';x.fillText(`${videoFrame?'Video frame':S.mode} • ${S.resolution} • ${zoomText(S.zoom)}${S.raw?' • RAW+JPEG':''}`,28,c.height-28);
+ const url=c.toDataURL('image/jpeg',.93);S.shots.unshift(url);$('galleryBtn').style.backgroundImage=`url(${url})`;renderGallery();$('flash').classList.remove('go');void $('flash').offsetWidth;$('flash').classList.add('go');toast(videoFrame?'Frame captured':'Photo captured')
+}
+function togglePanorama(){
+ if(panoTimer){clearInterval(panoTimer);panoTimer=null;panoProgress=0;$('panoDot').style.left='9%';toast('Panorama stopped');return}
+ panoProgress=0;toast('Panorama started');panoTimer=setInterval(()=>{panoProgress+=2;const p=9+(panoProgress*.82);$('panoDot').style.left=Math.min(91,p)+'%';if(panoProgress>=100){clearInterval(panoTimer);panoTimer=null;toast('Panorama complete');capture(false);panoProgress=0;$('panoDot').style.left='9%'}},80)
+}
+
+function renderGallery(){const g=$('gallery');g.innerHTML='';if(!S.shots.length){g.innerHTML='<div class="empty">Captured demo photos appear here.</div>';return}S.shots.forEach(src=>{const i=new Image();i.src=src;g.appendChild(i)})}
+$('galleryBtn').onclick=()=>{renderGallery();$('galleryPage').classList.add('show')};
+
+function updateStorage(){
+ const saver=$$('.persist').find(x=>x.dataset.key==='storageSaver')?.checked;
+ let photos=S.resolution==='50 MP'?6100:19400;if(saver)photos=Math.round(photos*1.4);
+ $('photoEstimate').textContent=photos.toLocaleString();let vh=S.videoRes==='4K'?'9 h 35 min':'17 h 50 min';if(S.videoFormat==='H.265'&&S.videoRes==='4K')vh='11 h 20 min';$('videoEstimate').textContent=vh
+}
+
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){closeSheets();$$('.full,.subpage').forEach(x=>x.classList.remove('show'));hideZoomSlider();$('quickPop').classList.remove('show')}
+ if(e.code==='Space'){e.preventDefault();$('shutter').click()}
+ if(S.volume==='Shutter'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){$('shutter').click()}
+ if(S.volume==='Zoom'&&e.key==='ArrowUp')applyZoom(S.zoom*1.15,true);
+ if(S.volume==='Zoom'&&e.key==='ArrowDown')applyZoom(S.zoom/1.15,true)
+});
+
+
+window.addEventListener('resize',()=>applyAspectLayout());
+window.addEventListener('orientationchange',()=>setTimeout(applyAspectLayout,60));
+
+function init(){
+ updateSettingsUI();applyAspectLayout();renderModes();renderModeOptions();applyZoom(S.zoom,true);
+ $('quickEnable').checked=S.quickEnabled;
+ if(S.launch==='Video')setGroup('video');else setGroup('photo');
+ 
+}
+init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+*.iml
+.gradle/
+.idea/
+local.properties
+.DS_Store
+Thumbs.db
+build/
+**/build/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.apks
+*.jks
+*.keystore
+keystore.properties
+captures/
+updates/
+# Created automatically by ./gradlew bootstrap; commit it after first bootstrap if desired.
+gradle/wrapper/gradle-wrapper.jar

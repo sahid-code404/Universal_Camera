@@ -1,0 +1,15 @@
+name: Bug report
+description: Camera, preview, capture or update bug
+title: "[Bug] "
+body:
+  - type: input
+    id: device
+    attributes: { label: Device + Android version }
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes: { label: Reproduction steps }
+    validations: { required: true }
+  - type: textarea
+    id: logs
+    attributes: { label: Relevant logcat / camera diagnostics }

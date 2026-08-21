@@ -1,0 +1,1 @@
+# Module consumer rules
