@@ -48,7 +48,7 @@ class CameraDiscovery(
                     ?.toSet()
                     .orEmpty()
                 val streamMap = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                val previewSizes = streamMap?.getOutputSizes(SurfaceTexture::class.java).orEmpty()
+                val previewSizes = streamMap?.getOutputSizes(SurfaceTexture::class.java) ?: emptyArray()
                 val backwardsCompatible = capabilities.contains(
                     CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE,
                 )
@@ -177,14 +177,10 @@ class CameraDiscovery(
             ?.toSet()
             .orEmpty()
         val map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-        val preview = map
-            ?.getOutputSizes(SurfaceTexture::class.java)
-            .orEmpty()
-            .map(Size::toPixelSize)
-        val rawSizes = map
-            ?.getOutputSizes(ImageFormat.RAW_SENSOR)
-            .orEmpty()
-            .map(Size::toPixelSize)
+        val preview = (map?.getOutputSizes(SurfaceTexture::class.java) ?: emptyArray())
+            .map { it.toPixelSize() }
+        val rawSizes = (map?.getOutputSizes(ImageFormat.RAW_SENSOR) ?: emptyArray())
+            .map { it.toPixelSize() }
         val focal = chars
             .get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
             ?.firstOrNull()
@@ -212,9 +208,7 @@ class CameraDiscovery(
         val ois = chars
             .get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION)
             ?.any { it == CameraCharacteristics.LENS_OPTICAL_STABILIZATION_MODE_ON } == true
-        val fps = chars
-            .get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
-            .orEmpty()
+        val fps = (chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES) ?: emptyArray())
             .map { it.lower..it.upper }
         return LensDescriptor(
             target = LensTarget(logicalId, physicalId),
@@ -250,10 +244,12 @@ class CameraDiscovery(
                 if (lens.isLogicalAuto) {
                     lens.copy(userLabel = "Auto")
                 } else {
-                    val ratio = when {
-                        lens.equivalentFocalLengthMm != null && mainEq != null && mainEq > 0f ->
-                            lens.equivalentFocalLengthMm / mainEq
-                        else -> null
+                    val lensEq = lens.equivalentFocalLengthMm
+                    val baseEq = mainEq
+                    val ratio = if (lensEq != null && baseEq != null && baseEq > 0f) {
+                        lensEq / baseEq
+                    } else {
+                        null
                     }
                     val label = ratio?.let { formatZoom(it) }
                         ?: lens.focalLengthMm?.let { "${"%.1f".format(it)} mm" }
