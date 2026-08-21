@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.sahidcode404.camera.camera.discovery.CameraDiscovery
 import com.sahidcode404.camera.core.model.AppCameraState
 import com.sahidcode404.camera.core.model.CameraInventory
+import com.sahidcode404.camera.core.model.CameraRuntimeSignal
 import com.sahidcode404.camera.core.model.CaptureMode
 import com.sahidcode404.camera.core.model.HdrMode
 import com.sahidcode404.camera.core.model.LensDescriptor
@@ -13,6 +14,7 @@ import com.sahidcode404.camera.core.model.LensFacing
 import com.sahidcode404.camera.core.model.PreviewPipeline
 import com.sahidcode404.camera.core.model.UpscaleMode
 import com.sahidcode404.camera.core.settings.CameraSettingsRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +32,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var fullDiscoveryStarted = false
 
     init {
+        CameraRuntimeSignal.resetForProcessStartup()
         viewModelScope.launch {
             settings.preferences.collect { p ->
                 persistedLensKey = p.selectedLensKey
@@ -50,10 +53,6 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         startPrimaryDiscovery()
     }
 
-    /**
-     * Mirrors the reference Camera startup: resolve one rear route and hand it to the preview
-     * immediately. Do not block first frame on front/AUX/NDK metadata or active probe sessions.
-     */
     private fun startPrimaryDiscovery() = viewModelScope.launch {
         _state.update { it.copy(discoveryRunning = true, error = null) }
         runCatching { discovery.discoverPrimaryRear() }
@@ -65,6 +64,21 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 applyInventory(seed, keepCurrent = false)
                 _state.update { it.copy(discoveryRunning = false) }
+
+                // The reference implementation starts the hidden-AUX pass only after the actual
+                // repeating preview request is streaming. Poll a process-local signal set by the
+                // TextureView wrapper; use a conservative fallback so an unusual HAL error cannot
+                // permanently suppress the complete inventory.
+                viewModelScope.launch {
+                    repeat(150) {
+                        if (CameraRuntimeSignal.firstPreviewStreaming) {
+                            onPreviewStreaming()
+                            return@launch
+                        }
+                        delay(20)
+                    }
+                    onPreviewStreaming()
+                }
             }
             .onFailure {
                 fullDiscoveryStarted = true
@@ -72,14 +86,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             }
     }
 
-    /** Called by the real Camera2 preview after first streaming frame/session is alive. */
     fun onPreviewStreaming() {
         if (fullDiscoveryStarted) return
         fullDiscoveryStarted = true
         viewModelScope.launch { runFullDiscovery(showFailure = false) }
     }
 
-    /** Manual rescan keeps the current viewfinder alive while metadata refreshes in the background. */
     fun refreshCameras() {
         if (fullDiscoveryStarted) return
         fullDiscoveryStarted = true
