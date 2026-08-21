@@ -26,52 +26,104 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(AppCameraState(discoveryRunning = true))
     val state: StateFlow<AppCameraState> = _state.asStateFlow()
 
+    private var persistedLensKey: String? = null
+    private var fullDiscoveryStarted = false
+
     init {
         viewModelScope.launch {
             settings.preferences.collect { p ->
-                _state.update {
-                    it.copy(
+                persistedLensKey = p.selectedLensKey
+                _state.update { current ->
+                    current.copy(
                         hdrMode = p.hdrMode,
                         previewPipeline = p.previewPipeline,
                         upscaleMode = p.upscaleMode,
-                        selectedLensKey = p.selectedLensKey ?: it.selectedLensKey,
+                        selectedLensKey = if (current.inventory.isEmpty()) {
+                            p.selectedLensKey ?: current.selectedLensKey
+                        } else {
+                            current.selectedLensKey
+                        },
                     )
                 }
             }
         }
-        refreshCameras()
+        startPrimaryDiscovery()
     }
 
-    fun refreshCameras() = viewModelScope.launch {
+    /**
+     * Mirrors the reference Camera startup: resolve one rear route and hand it to the preview
+     * immediately. Do not block first frame on front/AUX/NDK metadata or active probe sessions.
+     */
+    private fun startPrimaryDiscovery() = viewModelScope.launch {
         _state.update { it.copy(discoveryRunning = true, error = null) }
-        runCatching { discovery.discover() }
-            .onSuccess { discovered ->
-                // Logical multi-camera parents are transport/auto-switch routes, not separate pieces
-                // of glass. Keep them out of the user lens rail whenever concrete validated lenses
-                // exist. If a device exposes only the logical parent, retain it as the sole usable
-                // rear route but present it as the normal 1x camera rather than an "Auto" lens.
-                val inventory = discovered.toUserFacingInventory()
-                val persisted = _state.value.selectedLensKey
-                val all = inventory.rear + inventory.front + inventory.external
-                val selected = all.firstOrNull { it.stableKey == persisted }
-                    ?: preferredLens(inventory.rear, 24f)
-                    ?: preferredLens(inventory.front, 26f)
-                    ?: inventory.external.firstOrNull()
+        runCatching { discovery.discoverPrimaryRear() }
+            .onSuccess { seed ->
+                if (seed.isEmpty()) {
+                    fullDiscoveryStarted = true
+                    runFullDiscovery(showFailure = true)
+                    return@onSuccess
+                }
+                applyInventory(seed, keepCurrent = false)
+                _state.update { it.copy(discoveryRunning = false) }
+            }
+            .onFailure {
+                fullDiscoveryStarted = true
+                runFullDiscovery(showFailure = true)
+            }
+    }
+
+    /** Called by the real Camera2 preview after first streaming frame/session is alive. */
+    fun onPreviewStreaming() {
+        if (fullDiscoveryStarted) return
+        fullDiscoveryStarted = true
+        viewModelScope.launch { runFullDiscovery(showFailure = false) }
+    }
+
+    /** Manual rescan keeps the current viewfinder alive while metadata refreshes in the background. */
+    fun refreshCameras() {
+        if (fullDiscoveryStarted) return
+        fullDiscoveryStarted = true
+        viewModelScope.launch { runFullDiscovery(showFailure = true) }
+    }
+
+    private suspend fun runFullDiscovery(showFailure: Boolean) {
+        runCatching { discovery.discoverFull(deepScan = true) }
+            .onSuccess { inventory ->
+                applyInventory(inventory, keepCurrent = true)
+                _state.update { it.copy(discoveryRunning = false, error = null) }
+            }
+            .onFailure { error ->
                 _state.update {
                     it.copy(
-                        inventory = inventory,
-                        selectedLensKey = selected?.stableKey,
                         discoveryRunning = false,
+                        error = if (showFailure) error.message else it.error,
                     )
                 }
             }
-            .onFailure { e ->
-                _state.update { it.copy(discoveryRunning = false, error = e.message) }
-            }
+    }
+
+    private fun applyInventory(discovered: CameraInventory, keepCurrent: Boolean) {
+        val inventory = discovered.toUserFacingInventory()
+        val all = inventory.rear + inventory.front + inventory.external
+        val currentKey = if (keepCurrent) _state.value.selectedLensKey else null
+        val current = all.firstOrNull { it.stableKey == currentKey }
+        val persisted = all.firstOrNull { it.stableKey == persistedLensKey }
+        val selected = current
+            ?: persisted
+            ?: preferredLens(inventory.rear, 24f)
+            ?: preferredLens(inventory.front, 26f)
+            ?: inventory.external.firstOrNull()
+        _state.update {
+            it.copy(
+                inventory = inventory,
+                selectedLensKey = selected?.stableKey,
+            )
+        }
     }
 
     fun selectLens(lens: LensDescriptor) {
         _state.update { it.copy(selectedLensKey = lens.stableKey) }
+        persistedLensKey = lens.stableKey
         viewModelScope.launch { settings.setSelectedLens(lens.stableKey) }
     }
 
@@ -113,6 +165,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     }
 }
 
+private fun CameraInventory.isEmpty(): Boolean = rear.isEmpty() && front.isEmpty() && external.isEmpty()
+
 private fun CameraInventory.toUserFacingInventory(): CameraInventory = copy(
     rear = userFacingGroup(rear, LensFacing.BACK),
     front = userFacingGroup(front, LensFacing.FRONT),
@@ -125,13 +179,8 @@ private fun userFacingGroup(
 ): List<LensDescriptor> {
     val concrete = lenses.filterNot { it.isLogicalAuto }
     if (concrete.isNotEmpty()) return concrete
-
     return lenses.map { lens ->
-        if (lens.isLogicalAuto && facing == LensFacing.BACK) {
-            lens.copy(userLabel = "1x")
-        } else {
-            lens
-        }
+        if (lens.isLogicalAuto && facing == LensFacing.BACK) lens.copy(userLabel = "1x") else lens
     }
 }
 
