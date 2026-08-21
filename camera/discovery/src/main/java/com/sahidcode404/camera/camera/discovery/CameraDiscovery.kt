@@ -31,7 +31,14 @@ class CameraDiscovery(
     suspend fun discover(): CameraInventory = withContext(Dispatchers.Default) {
         val candidates = mutableListOf<LensDescriptor>()
         val rejected = mutableListOf<String>()
-        val topLevelIds = manager.cameraIdList.toList()
+
+        val javaAdvertisedIds = runCatching { manager.cameraIdList.toList() }.getOrDefault(emptyList())
+        val nativeCandidateIds = NativeAuxCameraScanner.enumerateCandidateIds(deepScan = true)
+
+        // MotionCam-style discovery only augments ID finding. Every imported native candidate still
+        // has to pass Java Camera2 characteristics + the existing open/session/frame probe before it
+        // is user-visible, so all displayed lenses use exactly the same preview/capture path.
+        val topLevelIds = (javaAdvertisedIds + nativeCandidateIds).distinct()
 
         // Two-pass collection prevents a physical child that also appears as a top-level ID
         // from being shown twice simply because enumeration order changed.
@@ -98,7 +105,11 @@ class CameraDiscovery(
                         fallbackLabel = "Lens",
                     )
                 }
-            }.onFailure { rejected += id }
+            }.onFailure {
+                // NDK may be able to describe an ID that the Java Camera2 client cannot use. Keep it
+                // out of the UI rather than creating a button with a broken/different preview path.
+                rejected += id
+            }
         }
 
         val unique = candidates.distinctBy { lens ->
@@ -211,7 +222,7 @@ class CameraDiscovery(
         val fps = (chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES) ?: emptyArray())
             .map { it.lower..it.upper }
         return LensDescriptor(
-            target = LensTarget(logicalId, physicalId),
+            target = LensTarget(logicalId, physicalId, facing),
             facing = facing,
             userLabel = fallbackLabel,
             focalLengthMm = focal,
@@ -219,9 +230,9 @@ class CameraDiscovery(
             aperture = chars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_APERTURES)?.firstOrNull(),
             sensorWidthMm = physicalSize?.width,
             sensorHeightMm = physicalSize?.height,
-            supportsRaw = capabilities.contains(
-                CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_RAW,
-            ) && rawSizes.isNotEmpty(),
+            // Stream-map evidence is stronger than a redundant capability bit. Some vendor physical
+            // blocks expose a genuine RAW_SENSOR output while omitting REQUEST_AVAILABLE_CAPABILITIES_RAW.
+            supportsRaw = rawSizes.isNotEmpty(),
             supportsManualSensor = capabilities.contains(
                 CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR,
             ),
