@@ -1,0 +1,108 @@
+name: Publish Pre-Signed OTA
+
+on:
+  push:
+    branches:
+      - "ota/publish-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ota-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 15859902
+          packages: platform-tools
+
+      - name: Install APK verification tools
+        run: sdkmanager "build-tools;36.0.0"
+
+      - name: Validate staged OTA package
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="ota/release-manifest.json"
+          test -f "$MANIFEST"
+
+          eval "$(python3 - <<'PY'
+          import json, shlex
+          m = json.load(open('ota/release-manifest.json', encoding='utf-8'))
+          required = ['schema','versionCode','versionName','minSdk','apkAssetName','sha256','signingCertSha256']
+          missing = [k for k in required if k not in m or m[k] in (None, '')]
+          if missing:
+              raise SystemExit('Missing manifest fields: ' + ', '.join(missing))
+          if int(m['schema']) != 1:
+              raise SystemExit('Unsupported manifest schema')
+          vals = {
+              'VERSION_CODE': str(int(m['versionCode'])),
+              'VERSION_NAME': str(m['versionName']),
+              'APK_NAME': str(m['apkAssetName']),
+              'EXPECTED_SHA': str(m['sha256']).lower(),
+              'EXPECTED_CERT': str(m['signingCertSha256']).lower().replace(':',''),
+          }
+          for k,v in vals.items():
+              print(f'{k}={shlex.quote(v)}')
+          PY
+          )"
+
+          APK="ota/$APK_NAME"
+          test -f "$APK"
+
+          ACTUAL_SHA="$(sha256sum "$APK" | awk '{print $1}')"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > apk-verify.txt
+          ACTUAL_CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' apk-verify.txt | head -n1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          test -n "$ACTUAL_CERT"
+          test "$ACTUAL_CERT" = "$EXPECTED_CERT"
+
+          BADGING="$("$AAPT" dump badging "$APK" | head -n1)"
+          printf '%s\n' "$BADGING"
+          printf '%s\n' "$BADGING" | grep -F "versionCode='$VERSION_CODE'"
+          printf '%s\n' "$BADGING" | grep -F "versionName='$VERSION_NAME'"
+
+          TAG="v$VERSION_NAME"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release used by in-app OTA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.validate.outputs.tag }}
+          VERSION_NAME: ${{ steps.validate.outputs.version_name }}
+          APK_NAME: ${{ steps.validate.outputs.apk_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "ota/$APK_NAME" ota/release-manifest.json \
+              --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" \
+              "ota/$APK_NAME" \
+              ota/release-manifest.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --target main \
+              --title "Camera $VERSION_NAME" \
+              --generate-notes
+          fi
+
+      - name: Confirm OTA release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,assets
